@@ -379,7 +379,8 @@ var CUR = "د.ب";
 var MN  = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 var MNS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 
-var EXP_CATS = [
+// Default category seeds (used only on first run)
+var DEFAULT_EXP_CATS = [
   {id:"groceries",   lbl:"بقالة",         em:"🛒", c:"#0EA370"},
   {id:"food",        lbl:"طعام",          em:"🍽️", c:"#F97316"},
   {id:"debt",        lbl:"ديون",          em:"💳", c:"#E5484D"},
@@ -392,19 +393,18 @@ var EXP_CATS = [
   {id:"mobile",      lbl:"موبايل",        em:"📱", c:"#06B6D4"},
   {id:"shopping",    lbl:"مشتريات",       em:"🛍️", c:"#A855F7"},
   {id:"entertain",   lbl:"ترفيه",         em:"🎮", c:"#F43F5E"},
-  {id:"tech",        lbl:"تقنية",         em:"💻", c:"#64748B"},
   {id:"travel",      lbl:"سفر",           em:"✈️", c:"#0EA5E9"},
-  {id:"utilities",   lbl:"خدمات",         em:"🔧", c:"#78716C"},
-  {id:"housemaid",   lbl:"عمالة منزلية",  em:"🧹", c:"#84CC16"},
-  {id:"wife",        lbl:"الزوجة",        em:"👩", c:"#EC4899"},
   {id:"other",       lbl:"أخرى",          em:"📦", c:"#9CA3AF"},
 ];
-var INC_CATS = [
+var DEFAULT_INC_CATS = [
   {id:"salary",  lbl:"الراتب",    em:"💰", c:"#0EA370"},
   {id:"income2", lbl:"دخل ثانوي",em:"💼", c:"#3B82F6"},
   {id:"shop",    lbl:"المتجر",   em:"🏪", c:"#D97706"},
   {id:"other",   lbl:"أخرى",     em:"📥", c:"#8B5CF6"},
 ];
+// Will be loaded from localStorage
+var EXP_CATS = [];
+var INC_CATS = [];
 
 // ════════════════════════════════════════════
 //  STATE
@@ -416,12 +416,21 @@ var S = {
   txs:      ld("mb_tx",[]),
   onboarded:ld("mb_on",false),
   theme:    ld("mb_th","blue"),
+  expCats:  ld("mb_ec",null),
+  incCats:  ld("mb_ic",null),
 };
+// Init cats: load from storage or use defaults
+EXP_CATS = S.expCats ? S.expCats : DEFAULT_EXP_CATS.slice();
+INC_CATS = S.incCats ? S.incCats : DEFAULT_INC_CATS.slice();
+if(!S.expCats){S.expCats=EXP_CATS;}
+if(!S.incCats){S.incCats=INC_CATS;}
 
 function save(){
   sv("mb_tx",S.txs);
   sv("mb_on",S.onboarded);
   sv("mb_th",S.theme);
+  sv("mb_ec",S.expCats);
+  sv("mb_ic",S.incCats);
 }
 
 // ════════════════════════════════════════════
@@ -433,6 +442,8 @@ var UI = {
   month:   new Date().toISOString().slice(0,7),
   obStep:  0,
   editTx:  null,
+  editCat: null,
+  editCatType: "expense",
   pivotData: null,
   modalCb: null,
 };
@@ -1185,6 +1196,39 @@ function pageMore(){
 
 
 
+  // Category management
+  body.appendChild(secTitle("فئات المصروفات","4px"));
+  var expCatCard=el("div",{cls:"card card-p"});
+  var expChips=el("div",{cls:"chips",sty:{marginBottom:"10px"}});
+  for(var i=0;i<EXP_CATS.length;i++){
+    (function(cat,idx){
+      var chip=el("div",{sty:{display:"flex",alignItems:"center",gap:"6px",padding:"7px 10px",borderRadius:"20px",border:"1.5px solid var(--border)",background:"var(--surface2)",cursor:"pointer"},
+        onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType="expense";go("editCat");}});
+      chip.appendChild(el("span",null,cat.em));
+      chip.appendChild(el("span",{sty:{fontSize:"12px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
+      expChips.appendChild(chip);
+    })(EXP_CATS[i],i);
+  }
+  expCatCard.appendChild(expChips);
+  expCatCard.appendChild(el("button",{cls:"btn btn-ghost",sty:{fontSize:"13px",padding:"10px"},onclick:function(){UI.editCat=null;UI.editCatType="expense";go("editCat");}},"＋ إضافة فئة مصروف"));
+  body.appendChild(expCatCard);
+
+  body.appendChild(secTitle("فئات الدخل","4px"));
+  var incCatCard=el("div",{cls:"card card-p"});
+  var incChips=el("div",{cls:"chips",sty:{marginBottom:"10px"}});
+  for(var i=0;i<INC_CATS.length;i++){
+    (function(cat,idx){
+      var chip=el("div",{sty:{display:"flex",alignItems:"center",gap:"6px",padding:"7px 10px",borderRadius:"20px",border:"1.5px solid var(--border)",background:"var(--surface2)",cursor:"pointer"},
+        onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType="income";go("editCat");}});
+      chip.appendChild(el("span",null,cat.em));
+      chip.appendChild(el("span",{sty:{fontSize:"12px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
+      incChips.appendChild(chip);
+    })(INC_CATS[i],i);
+  }
+  incCatCard.appendChild(incChips);
+  incCatCard.appendChild(el("button",{cls:"btn btn-ghost",sty:{fontSize:"13px",padding:"10px"},onclick:function(){UI.editCat=null;UI.editCatType="income";go("editCat");}},"＋ إضافة فئة دخل"));
+  body.appendChild(incCatCard);
+
   // Backup
   body.appendChild(secTitle("البيانات","4px"));
   var bkCard=el("div",{cls:"card"});
@@ -1256,25 +1300,57 @@ function parsePivot(raw,hIdx){
   var hRow=raw[hIdx];
   var mCols=[];
   for(var ci=0;ci<hRow.length;ci++){if(isMonthH(hRow[ci]))mCols.push({ci:ci,mi:monthIdx(hRow[ci]),h:String(hRow[ci]).trim()});}
+  // Find label column: first non-month, non-empty header
   var labelCol=0;
-  for(var ci=0;ci<hRow.length;ci++){var hv=String(hRow[ci]||"").trim().toLowerCase();if(hv&&!isMonthH(hv)){labelCol=ci;break;}}
-  var incRows=[],expRows=[],section="";
+  for(var ci=0;ci<hRow.length;ci++){var hv=String(hRow[ci]||"").trim().toLowerCase();if(hv&&!isMonthH(hv)&&hv!=="bhd"&&hv!=="kwd"&&hv!=="د.ب"){labelCol=ci;break;}}
+
+  var incRows=[],expRows=[],section="",curLabel="";
+  var skipWords=["TOTAL","BALANCE","SUMMARY","ANNUAL","AVERAGE","PERCENTAGE","المجموع","الميزانية","BHD -","KWD"];
+
   for(var ri=hIdx+1;ri<raw.length;ri++){
     var row=raw[ri];
+
+    // Get first non-empty cell to detect section headers
     var firstVal="";
     for(var ci=0;ci<row.length;ci++){var cv=String(row[ci]||"").trim();if(cv){firstVal=cv.toUpperCase();break;}}
     if(!firstVal)continue;
-    if(firstVal.includes("INCOME")||firstVal.includes("دخل")){section="income";continue;}
-    if(firstVal.includes("EXPENSE")||firstVal.includes("مصروف")){section="expense";continue;}
-    var skipWords=["TOTAL","BALANCE","SUMMARY","ANNUAL","AVERAGE","PERCENTAGE","المجموع","الميزانية"];
-    var skip=false;for(var si=0;si<skipWords.length;si++)if(firstVal.startsWith(skipWords[si])){skip=true;break;}
+
+    // Section detection
+    if(firstVal.includes("INCOME")||firstVal.includes("دخل")){section="income";curLabel="";continue;}
+    if(firstVal.includes("EXPENSE")||firstVal.includes("مصروف")){section="expense";curLabel="";continue;}
+
+    // Skip summary rows
+    var skip=false;
+    for(var si=0;si<skipWords.length;si++)if(firstVal.startsWith(skipWords[si])){skip=true;break;}
     if(skip)continue;
     if(!section)continue;
+
+    // Get label: prefer labelCol, but accept any non-BHD non-empty text cell
     var lbl=String(row[labelCol]||"").trim();
-    if(!lbl||lbl.length<2)continue;
+    // Skip if label is just "BHD", "-", currency symbol, or empty
+    var lblUp=lbl.toUpperCase();
+    if(lblUp==="BHD"||lblUp==="KWD"||lblUp==="-"||lblUp==="د.ب"||lbl.length<2){
+      // Try to find label in other columns
+      lbl="";
+      for(var ci=0;ci<mCols[0].ci;ci++){
+        var cv2=String(row[ci]||"").trim();
+        var cv2up=cv2.toUpperCase();
+        if(cv2&&cv2up!=="BHD"&&cv2up!=="KWD"&&cv2up!=="-"&&cv2up!=="د.ب"&&cv2.length>=2){lbl=cv2;break;}
+      }
+    }
+
+    // If still no label, use last known label for this section (continuation row)
+    if(!lbl&&curLabel) lbl=curLabel;
+    if(!lbl) continue;
+    curLabel=lbl; // remember for next rows in same section
+
+    // Read values for each month column
     for(var ci=0;ci<mCols.length;ci++){
       var mc=mCols[ci];
-      var val=parseFloat(String(row[mc.ci]||"").replace(/,/g,"").replace(/[^0-9.]/g,""))||0;
+      var cellVal=String(row[mc.ci]||"").trim();
+      // Strip BHD prefix and commas
+      cellVal=cellVal.replace(/BHD/gi,"").replace(/KWD/gi,"").replace(/د\.ب/g,"").replace(/,/g,"").trim();
+      var val=parseFloat(cellVal.replace(/[^0-9.]/g,""))||0;
       if(val<=0)continue;
       var tx={label:lbl,amount:val,month:mc.mi};
       if(section==="income")incRows.push(tx);
@@ -1406,6 +1482,118 @@ function importJSON(e){
   r.readAsText(file);e.target.value="";
 }
 
+
+// ════════════════════════════════════════════
+//  PAGE: ADD/EDIT CATEGORY
+// ════════════════════════════════════════════
+var CAT_COLORS=["#0EA370","#F97316","#E5484D","#EC4899","#6366F1","#8B5CF6","#14B8A6","#3B82F6","#EAB308","#06B6D4","#A855F7","#F43F5E","#0EA5E9","#D97706","#84CC16","#64748B","#78716C","#9CA3AF"];
+var CAT_EMOJIS=["🛒","🍽️","💳","👶","🚗","⛽","🏥","🏠","💡","📱","🛍️","🎮","✈️","💰","💼","🏪","📥","📦","🧹","🔧","🎓","🏋️","💊","🎁","📚","☕","🎵","🍕","🧴","🐾","💈","🌿"];
+
+function pageEditCat(){
+  var isEdit=!!UI.editCat;
+  var type=UI.editCatType;
+  var f=isEdit?UI.editCat:{id:"",lbl:"",em:"😊",c:CAT_COLORS[0]};
+  var curColor=f.c||CAT_COLORS[0];
+  var curEmoji=f.em||"😊";
+
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px",background:"var(--bg)"}});
+  var hdr=el("div",{cls:"hdr"});
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[
+    el("button",{cls:"back-btn",onclick:function(){go("more");}},["←"]),
+    el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الفئة":"فئة جديدة")
+  ]));
+  page.appendChild(hdr);
+
+  var body=el("div",{cls:"content"});
+
+  // Preview
+  var preview=el("div",{cls:"card card-p",sty:{display:"flex",alignItems:"center",gap:"14px",marginBottom:"0"}});
+  var previewIcon=el("div",{sty:{width:"48px",height:"48px",borderRadius:"14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",background:curColor+"22",flexShrink:"0"}},curEmoji);
+  var previewLbl=el("div",{sty:{flex:"1",fontSize:"16px",fontWeight:"800",color:"var(--text)"}},f.lbl||"اسم الفئة");
+  preview.appendChild(previewIcon);preview.appendChild(previewLbl);
+  body.appendChild(preview);
+
+  // Name
+  body.appendChild(secTitle("اسم الفئة","4px"));
+  var ni=inpEl({value:f.lbl||"",placeholder:"مثال: تأمين، رياضة، قهوة..."});
+  ni.addEventListener("input",function(){previewLbl.textContent=ni.value||"اسم الفئة";});
+  body.appendChild(ni);
+
+  // Emoji picker
+  body.appendChild(secTitle("الأيقونة","4px"));
+  var emojiWrap=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
+  function setEmoji(em){
+    curEmoji=em;previewIcon.textContent=em;
+    var btns=emojiWrap.querySelectorAll("button");
+    for(var i=0;i<btns.length;i++){btns[i].style.borderColor="var(--border)";btns[i].style.background="var(--surface2)";}
+  }
+  for(var i=0;i<CAT_EMOJIS.length;i++){
+    (function(em){
+      var b=el("button",{sty:{width:"42px",height:"42px",borderRadius:"10px",border:"2px solid",
+        borderColor:curEmoji===em?"var(--accent)":"var(--border)",
+        background:curEmoji===em?"var(--accent-bg)":"var(--surface2)",
+        fontSize:"20px",cursor:"pointer"},
+        onclick:function(){setEmoji(em);}},em);
+      emojiWrap.appendChild(b);
+    })(CAT_EMOJIS[i]);
+  }
+  // Custom emoji input
+  var customEm=inpEl({value:"",placeholder:"أو اكتب أيقونة...",maxlength:"2",sty:{width:"120px",textAlign:"center",fontSize:"20px"}});
+  customEm.addEventListener("input",function(){if(customEm.value.trim())setEmoji(customEm.value.trim());});
+  emojiWrap.appendChild(customEm);
+  body.appendChild(emojiWrap);
+
+  // Color picker
+  body.appendChild(secTitle("اللون","4px"));
+  var colorWrap=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
+  function setColor(c){
+    curColor=c;previewIcon.style.background=c+"22";
+    var btns=colorWrap.querySelectorAll("button");
+    for(var i=0;i<btns.length;i++){btns[i].style.border="3px solid transparent";}
+  }
+  for(var i=0;i<CAT_COLORS.length;i++){
+    (function(c){
+      var b=el("button",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:c,
+        border:curColor===c?"3px solid var(--text)":"3px solid transparent",cursor:"pointer"},
+        onclick:function(){setColor(c);}});
+      colorWrap.appendChild(b);
+    })(CAT_COLORS[i]);
+  }
+  body.appendChild(colorWrap);
+
+  // Save
+  var saveFn=function(){
+    var name=ni.value.trim();if(!name){toast("أدخل اسم الفئة");return;}
+    var cats=type==="income"?INC_CATS:EXP_CATS;
+    if(isEdit){
+      for(var i=0;i<cats.length;i++){
+        if(cats[i].id===f.id){cats[i]=Object.assign({},cats[i],{lbl:name,em:curEmoji,c:curColor});break;}
+      }
+    } else {
+      var newId="cat_"+Date.now();
+      cats.push({id:newId,lbl:name,em:curEmoji,c:curColor});
+    }
+    if(type==="income"){INC_CATS=cats;S.incCats=cats;}
+    else{EXP_CATS=cats;S.expCats=cats;}
+    save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go("more");
+  };
+
+  var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"8px"}});
+  btnRow.appendChild(el("button",{cls:"btn btn-accent",onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
+  if(isEdit){
+    var fid=f.id;
+    btnRow.appendChild(el("button",{cls:"btn btn-danger",sty:{width:"auto",padding:"14px 18px"},onclick:function(){
+      confirm2("حذف الفئة؟",f.lbl,function(){
+        var cats=type==="income"?INC_CATS:EXP_CATS;
+        var nc=[];for(var i=0;i<cats.length;i++)if(cats[i].id!==fid)nc.push(cats[i]);
+        if(type==="income"){INC_CATS=nc;S.incCats=nc;}else{EXP_CATS=nc;S.expCats=nc;}
+        save();toast("تم الحذف");go("more");
+      });
+    }},"🗑️"));
+  }
+  body.appendChild(btnRow);
+  page.appendChild(body);return page;
+}
 // ════════════════════════════════════════════
 //  RENDER
 // ════════════════════════════════════════════
@@ -1424,6 +1612,7 @@ function render(){
     report:pageReport,
     more:pageMore,
     confirmXL:pageConfirmXL,
+    editCat:pageEditCat,
   };
   var fn=pages[UI.view];
   if(fn)root.appendChild(fn());
