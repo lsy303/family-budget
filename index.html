@@ -1298,67 +1298,122 @@ function handleXL(e){
 }
 
 function parsePivot(raw,hIdx){
-  var hRow=raw[hIdx];
-  var mCols=[];
-  for(var ci=0;ci<hRow.length;ci++){if(isMonthH(hRow[ci]))mCols.push({ci:ci,mi:monthIdx(hRow[ci]),h:String(hRow[ci]).trim()});}
-  // Find label column: first non-month, non-empty header
-  var labelCol=0;
-  for(var ci=0;ci<hRow.length;ci++){var hv=String(hRow[ci]||"").trim().toLowerCase();if(hv&&!isMonthH(hv)&&hv!=="bhd"&&hv!=="kwd"&&hv!=="د.ب"){labelCol=ci;break;}}
-
-  var incRows=[],expRows=[],section="",curLabel="";
-  var skipWords=["TOTAL","BALANCE","SUMMARY","ANNUAL","AVERAGE","PERCENTAGE","المجموع","الميزانية","BHD -","KWD"];
-
-  for(var ri=hIdx+1;ri<raw.length;ri++){
+  // Find ALL header rows (rows where 2+ cells are month names)
+  // Each header row starts a new section
+  var sections=[];
+  for(var ri=hIdx;ri<raw.length;ri++){
     var row=raw[ri];
+    var mCols=[];
+    for(var ci=0;ci<row.length;ci++){if(isMonthH(row[ci]))mCols.push({ci:ci,mi:monthIdx(row[ci]),h:String(row[ci]).trim()});}
+    if(mCols.length>=2){sections.push({hRowIdx:ri,mCols:mCols,rows:[]});}
+  }
+  if(!sections.length)return{incRows:[],expRows:[],year:new Date().getFullYear()};
 
-    // Get first non-empty cell to detect section headers
-    var firstVal="";
-    for(var ci=0;ci<row.length;ci++){var cv=String(row[ci]||"").trim();if(cv){firstVal=cv.toUpperCase();break;}}
-    if(!firstVal)continue;
-
-    // Section detection
-    if(firstVal.includes("INCOME")||firstVal.includes("دخل")){section="income";curLabel="";continue;}
-    if(firstVal.includes("EXPENSE")||firstVal.includes("مصروف")){section="expense";curLabel="";continue;}
-
-    // Skip summary rows
-    var skip=false;
-    for(var si=0;si<skipWords.length;si++)if(firstVal.startsWith(skipWords[si])){skip=true;break;}
-    if(skip)continue;
-    if(!section)continue;
-
-    // Get label: prefer labelCol, but accept any non-BHD non-empty text cell
-    var lbl=String(row[labelCol]||"").trim();
-    // Skip if label is just "BHD", "-", currency symbol, or empty
-    var lblUp=lbl.toUpperCase();
-    if(lblUp==="BHD"||lblUp==="KWD"||lblUp==="-"||lblUp==="د.ب"||lbl.length<2){
-      // Try to find label in other columns
-      lbl="";
-      for(var ci=0;ci<mCols[0].ci;ci++){
-        var cv2=String(row[ci]||"").trim();
-        var cv2up=cv2.toUpperCase();
-        if(cv2&&cv2up!=="BHD"&&cv2up!=="KWD"&&cv2up!=="-"&&cv2up!=="د.ب"&&cv2.length>=2){lbl=cv2;break;}
-      }
-    }
-
-    // If still no label, use last known label for this section (continuation row)
-    if(!lbl&&curLabel) lbl=curLabel;
-    if(!lbl) continue;
-    curLabel=lbl; // remember for next rows in same section
-
-    // Read values for each month column
-    for(var ci=0;ci<mCols.length;ci++){
-      var mc=mCols[ci];
-      var cellVal=String(row[mc.ci]||"").trim();
-      // Strip BHD prefix and commas
-      cellVal=cellVal.replace(/BHD/gi,"").replace(/KWD/gi,"").replace(/د\.ب/g,"").replace(/,/g,"").trim();
-      var val=parseFloat(cellVal.replace(/[^0-9.]/g,""))||0;
-      if(val<=0)continue;
-      var tx={label:lbl,amount:val,month:mc.mi};
-      if(section==="income")incRows.push(tx);
-      else expRows.push(tx);
+  // For each section, collect data rows until next section header
+  for(var si=0;si<sections.length;si++){
+    var sec=sections[si];
+    var nextHdr=si+1<sections.length?sections[si+1].hRowIdx:raw.length;
+    for(var ri=sec.hRowIdx+1;ri<nextHdr;ri++){
+      sec.rows.push(raw[ri]);
     }
   }
-  return{incRows:incRows,expRows:expRows,year:new Date().getFullYear()};
+
+  // Find label column per section (first non-month col in header)
+  for(var si=0;si<sections.length;si++){
+    var sec=sections[si];
+    var hRow=raw[sec.hRowIdx];
+    sec.labelCol=0;
+    for(var ci=0;ci<hRow.length;ci++){
+      var hv=String(hRow[ci]||"").trim().toLowerCase();
+      if(hv&&!isMonthH(hv)&&hv!=="bhd"&&hv!=="kwd"&&hv!=="د.ب"&&hv!=="-"){sec.labelCol=ci;break;}
+    }
+  }
+
+  // First section = income, second = expenses (most common layout)
+  // But also check for INCOME/EXPENSE keywords in section context
+  var incRows=[],expRows=[];
+  var year=new Date().getFullYear();
+
+  function extractFromSection(sec,type){
+    var curLabel="";
+    var skipWords=["TOTAL","BALANCE","SUMMARY","ANNUAL","AVERAGE","المجموع","PERCENTAGE"];
+    for(var ri=0;ri<sec.rows.length;ri++){
+      var row=sec.rows[ri];
+      // Check if entire row is empty
+      var anyVal=false;
+      for(var ci=0;ci<row.length;ci++){if(String(row[ci]||"").trim())anyVal=true;}
+      if(!anyVal)continue;
+
+      // Get first non-empty text for skip detection
+      var firstText="";
+      for(var ci=0;ci<row.length;ci++){var cv=String(row[ci]||"").trim();if(cv){firstText=cv.toUpperCase();break;}}
+      var skip=false;
+      for(var si2=0;si2<skipWords.length;si2++)if(firstText.startsWith(skipWords[si2])){skip=true;break;}
+      if(skip)continue;
+
+      // Get label from labelCol
+      var lbl=String(row[sec.labelCol]||"").trim();
+      var lblUp=lbl.toUpperCase();
+      if(lblUp==="BHD"||lblUp==="KWD"||lblUp==="-"||lblUp==="د.ب"||lbl.length<2){
+        // Search earlier columns
+        lbl="";
+        for(var ci=0;ci<sec.mCols[0].ci;ci++){
+          var cv2=String(row[ci]||"").trim();
+          var cv2up=cv2.toUpperCase();
+          if(cv2&&cv2up!=="BHD"&&cv2up!=="KWD"&&cv2up!=="-"&&cv2.length>=2){lbl=cv2;break;}
+        }
+      }
+      if(!lbl&&curLabel)lbl=curLabel;
+      if(!lbl)continue;
+      curLabel=lbl;
+
+      // Read month values
+      for(var ci=0;ci<sec.mCols.length;ci++){
+        var mc=sec.mCols[ci];
+        var cellVal=String(row[mc.ci]||"").trim().replace(/BHD/gi,"").replace(/KWD/gi,"").replace(/,/g,"").trim();
+        var val=parseFloat(cellVal.replace(/[^0-9.]/g,""))||0;
+        if(val<=0)continue;
+        if(type==="income")incRows.push({label:lbl,amount:val,month:mc.mi});
+        else expRows.push({label:lbl,amount:val,month:mc.mi});
+      }
+    }
+  }
+
+  // Determine which section is income vs expense
+  // Strategy: scan ALL rows of the sheet for INCOME/EXPENSES keywords
+  // Build a map: rowIndex -> type
+  var rowTypeMap={};
+  for(var ri=0;ri<raw.length;ri++){
+    var rText="";
+    for(var ci=0;ci<(raw[ri]||[]).length;ci++){
+      var cv=String(raw[ri][ci]||"").trim().toUpperCase();
+      rText+=cv+" ";
+    }
+    rText=rText.trim();
+    // Exact or near-exact match for section headers
+    if(rText==="INCOME"||rText.replace(/\s+/g,"")=="INCOME"){rowTypeMap[ri]="income";}
+    else if(rText==="EXPENSES"||rText.replace(/\s+/g,"")=="EXPENSES"||rText==="EXPENSE"){rowTypeMap[ri]="expense";}
+    else if(rText.includes("INCOME")&&rText.length<20){rowTypeMap[ri]="income";}
+    else if(rText.includes("EXPENSE")&&rText.length<20){rowTypeMap[ri]="expense";}
+    else if(rText.includes("دخل")&&rText.length<15){rowTypeMap[ri]="income";}
+    else if(rText.includes("مصروف")&&rText.length<15){rowTypeMap[ri]="expense";}
+  }
+
+  // For each section header row, find the closest type label above it
+  for(var si=0;si<sections.length;si++){
+    var sec=sections[si];
+    var type="";
+    // Look up to 5 rows above the month-header row
+    for(var ri=sec.hRowIdx-1;ri>=Math.max(0,sec.hRowIdx-5);ri--){
+      if(rowTypeMap[ri]){type=rowTypeMap[ri];break;}
+    }
+    // Fallback: first section = income, second = expense
+    if(!type){type=si===0?"income":"expense";}
+    sec.type=type;
+    extractFromSection(sec,type);
+  }
+
+  return{incRows:incRows,expRows:expRows,year:year};
 }
 
 function pageConfirmXL(){
