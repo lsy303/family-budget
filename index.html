@@ -1198,36 +1198,37 @@ function pageMore(){
 
   // Category management
   body.appendChild(secTitle("فئات المصروفات","4px"));
-  var expCatCard=el("div",{cls:"card card-p"});
-  var expChips=el("div",{cls:"chips",sty:{marginBottom:"10px"}});
-  for(var i=0;i<EXP_CATS.length;i++){
-    (function(cat,idx){
-      var chip=el("div",{sty:{display:"flex",alignItems:"center",gap:"6px",padding:"7px 10px",borderRadius:"20px",border:"1.5px solid var(--border)",background:"var(--surface2)",cursor:"pointer"},
-        onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType="expense";go("editCat");}});
-      chip.appendChild(el("span",null,cat.em));
-      chip.appendChild(el("span",{sty:{fontSize:"12px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
-      expChips.appendChild(chip);
-    })(EXP_CATS[i],i);
+  function renderCatList(cats,type){
+    var card=el("div",{cls:"card",sty:{overflow:"hidden"}});
+    for(var ci=0;ci<cats.length;ci++){
+      (function(cat,idx){
+        var row=el("div",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",
+          borderBottom:idx<cats.length-1?"1px solid var(--border)":"none",cursor:"pointer"},
+          onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType=type;go("editCat");}});
+        row.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",
+          background:cat.c+"22",display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:"18px",flexShrink:"0"}},cat.em));
+        row.appendChild(el("div",{sty:{flex:"1",fontSize:"14px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
+        row.appendChild(el("span",{sty:{color:"var(--text3)",fontSize:"16px"}},"›"));
+        card.appendChild(row);
+      })(cats[ci],ci);
+    }
+    // Add button at bottom
+    var addBtn=el("button",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",
+      width:"100%",background:"none",border:"none",cursor:"pointer",
+      borderTop:cats.length?"1px solid var(--border)":"none"},
+      onclick:function(){UI.editCat=null;UI.editCatType=type;go("editCat");}});
+    addBtn.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",
+      background:"var(--accent-bg)",display:"flex",alignItems:"center",justifyContent:"center",
+      fontSize:"20px",flexShrink:"0"}},"＋"));
+    addBtn.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"700",color:"var(--accent)"}},
+      type==="expense"?"إضافة فئة مصروف":"إضافة فئة دخل"));
+    card.appendChild(addBtn);
+    return card;
   }
-  expCatCard.appendChild(expChips);
-  expCatCard.appendChild(el("button",{cls:"btn btn-ghost",sty:{fontSize:"13px",padding:"10px"},onclick:function(){UI.editCat=null;UI.editCatType="expense";go("editCat");}},"＋ إضافة فئة مصروف"));
-  body.appendChild(expCatCard);
-
+  body.appendChild(renderCatList(EXP_CATS,"expense"));
   body.appendChild(secTitle("فئات الدخل","4px"));
-  var incCatCard=el("div",{cls:"card card-p"});
-  var incChips=el("div",{cls:"chips",sty:{marginBottom:"10px"}});
-  for(var i=0;i<INC_CATS.length;i++){
-    (function(cat,idx){
-      var chip=el("div",{sty:{display:"flex",alignItems:"center",gap:"6px",padding:"7px 10px",borderRadius:"20px",border:"1.5px solid var(--border)",background:"var(--surface2)",cursor:"pointer"},
-        onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType="income";go("editCat");}});
-      chip.appendChild(el("span",null,cat.em));
-      chip.appendChild(el("span",{sty:{fontSize:"12px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
-      incChips.appendChild(chip);
-    })(INC_CATS[i],i);
-  }
-  incCatCard.appendChild(incChips);
-  incCatCard.appendChild(el("button",{cls:"btn btn-ghost",sty:{fontSize:"13px",padding:"10px"},onclick:function(){UI.editCat=null;UI.editCatType="income";go("editCat");}},"＋ إضافة فئة دخل"));
-  body.appendChild(incCatCard);
+  body.appendChild(renderCatList(INC_CATS,"income"));
 
   // Backup
   body.appendChild(secTitle("البيانات","4px"));
@@ -1583,7 +1584,7 @@ function pageEditCat(){
   if(isEdit){
     var fid=f.id;
     btnRow.appendChild(el("button",{cls:"btn btn-danger",sty:{width:"auto",padding:"14px 18px"},onclick:function(){
-      confirm2("حذف الفئة؟",f.lbl,function(){
+      modal("حذف الفئة؟",f.lbl,false,function(){
         var cats=type==="income"?INC_CATS:EXP_CATS;
         var nc=[];for(var i=0;i<cats.length;i++)if(cats[i].id!==fid)nc.push(cats[i]);
         if(type==="income"){INC_CATS=nc;S.incCats=nc;}else{EXP_CATS=nc;S.expCats=nc;}
