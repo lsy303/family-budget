@@ -14,9 +14,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-/* ═══════════════════════════════
-   TOKENS
-═══════════════════════════════ */
 :root {
   --bg:       #F7F8FA;
   --surface:  #FFFFFF;
@@ -31,14 +28,14 @@
   --expense-bg:#FDEAEB;
   --accent:   #1D6FA4;
   --accent-bg:#E8F2FA;
+  --commit:   #7C3AED;
+  --commit-bg:#EDE9FE;
   --amber:    #D97706;
   --amber-bg: #FEF3C7;
   --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
   --shadow-md:0 4px 16px rgba(0,0,0,.10);
   --r:        14px;
   --r-sm:     10px;
-
-  /* Theme pink override */
   --theme-accent: #1D6FA4;
   --theme-hdr1:   #1D6FA4;
   --theme-hdr2:   #1558A0;
@@ -50,10 +47,6 @@ body.pink {
   --accent:       #C2185B;
   --accent-bg:    #FCE4EC;
 }
-
-/* ═══════════════════════════════
-   RESET & BASE
-═══════════════════════════════ */
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 html, body { height:100%; background:var(--bg); }
 body { font-family:'Cairo',-apple-system,BlinkMacSystemFont,sans-serif; max-width:430px; margin:0 auto; color:var(--text); overflow-x:hidden; -webkit-font-smoothing:antialiased; }
@@ -63,21 +56,11 @@ button { cursor:pointer; border:none; background:none; }
 input { -webkit-appearance:none; }
 input[type="date"] { -webkit-appearance:none; }
 
-/* ═══════════════════════════════
-   LAYOUT
-═══════════════════════════════ */
 .page { min-height:100vh; padding-bottom:80px; }
 .content { padding:16px; display:flex; flex-direction:column; gap:12px; }
-
-/* ═══════════════════════════════
-   CARDS
-═══════════════════════════════ */
 .card { background:var(--surface); border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden; }
 .card-p { padding:16px 18px; }
 
-/* ═══════════════════════════════
-   HEADER
-═══════════════════════════════ */
 .hdr {
   background:linear-gradient(145deg, var(--theme-hdr1) 0%, var(--theme-hdr2) 100%);
   padding:52px 18px 20px;
@@ -85,10 +68,7 @@ input[type="date"] { -webkit-appearance:none; }
 }
 .hdr-title { font-size:11px; font-weight:700; letter-spacing:1.5px; color:rgba(255,255,255,.65); margin-bottom:4px; }
 
-/* ═══════════════════════════════
-   BALANCE CARD (signature element)
-   — split scale: income left / expense right
-═══════════════════════════════ */
+/* Balance Card */
 .balance-card {
   background:rgba(255,255,255,.14);
   border:1px solid rgba(255,255,255,.2);
@@ -98,22 +78,11 @@ input[type="date"] { -webkit-appearance:none; }
   backdrop-filter:blur(8px);
   -webkit-backdrop-filter:blur(8px);
 }
-.balance-main {
-  display:flex;
-  justify-content:center;
-  align-items:baseline;
-  gap:6px;
-  margin-bottom:4px;
-}
+.balance-main { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-bottom:4px; }
 .balance-num { font-size:36px; font-weight:900; color:#fff; letter-spacing:-1px; }
 .balance-cur { font-size:13px; font-weight:600; color:rgba(255,255,255,.6); }
 .balance-label { font-size:11px; color:rgba(255,255,255,.55); font-weight:600; letter-spacing:.5px; text-align:center; margin-bottom:14px; }
-.balance-scale {
-  display:grid;
-  grid-template-columns:1fr 4px 1fr;
-  gap:0;
-  align-items:center;
-}
+.balance-scale { display:grid; grid-template-columns:1fr 4px 1fr; gap:0; align-items:center; }
 .scale-side { display:flex; flex-direction:column; gap:2px; }
 .scale-side.right { text-align:right; }
 .scale-side.left  { text-align:left; }
@@ -121,13 +90,26 @@ input[type="date"] { -webkit-appearance:none; }
 .scale-val { font-size:16px; font-weight:900; }
 .scale-val.inc { color:#6EE7B7; }
 .scale-val.exp { color:#FCA5A5; }
+.scale-val.com { color:#C4B5FD; }
 .scale-divider { width:1px; height:36px; background:rgba(255,255,255,.2); margin:0 auto; }
 .scale-bar-wrap { margin-top:10px; position:relative; height:4px; background:rgba(255,255,255,.15); border-radius:99px; overflow:hidden; }
 .scale-bar-fill { position:absolute; top:0; right:0; height:100%; border-radius:99px; transition:width .6s cubic-bezier(.4,0,.2,1); }
 
-/* ═══════════════════════════════
-   MONTH SCROLLER
-═══════════════════════════════ */
+/* Income breakdown row in balance card */
+.income-breakdown {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-top:10px;
+}
+.ib-item {
+  background:rgba(255,255,255,.1);
+  border-radius:10px;
+  padding:8px 10px;
+}
+.ib-lbl { font-size:10px; color:rgba(255,255,255,.55); font-weight:700; margin-bottom:2px; }
+.ib-val { font-size:14px; font-weight:900; }
+
 .month-scroll { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
 .month-scroll::-webkit-scrollbar { height:0; }
 .mtab {
@@ -139,13 +121,7 @@ input[type="date"] { -webkit-appearance:none; }
 }
 .mtab.active { background:rgba(255,255,255,.9); color:var(--theme-hdr2); border-color:transparent; }
 
-/* ═══════════════════════════════
-   QUICK ADD BAR
-═══════════════════════════════ */
-.quick-bar {
-  display:grid; grid-template-columns:1fr 1fr;
-  gap:10px;
-}
+.quick-bar { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .quick-btn {
   display:flex; align-items:center; justify-content:center; gap:8px;
   padding:13px; border-radius:var(--r); font-size:14px; font-weight:800;
@@ -155,33 +131,18 @@ input[type="date"] { -webkit-appearance:none; }
 .quick-inc { background:var(--income-bg); color:var(--income); }
 .quick-exp { background:var(--expense-bg); color:var(--expense); }
 
-/* ═══════════════════════════════
-   STATS ROW
-═══════════════════════════════ */
 .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
 .stat-card { background:var(--surface); border-radius:var(--r-sm); box-shadow:var(--shadow); padding:12px; text-align:center; }
 .stat-lbl { font-size:10px; color:var(--text2); font-weight:700; margin-bottom:4px; }
 .stat-val { font-size:17px; font-weight:900; }
 .stat-cur { font-size:10px; color:var(--text3); }
 
-/* ═══════════════════════════════
-   SECTION TITLE
-═══════════════════════════════ */
 .sec-title { font-size:11px; font-weight:800; letter-spacing:1.5px; color:var(--text3); margin-bottom:8px; }
 
-/* ═══════════════════════════════
-   PROGRESS BAR
-═══════════════════════════════ */
 .prog { background:var(--surface2); border-radius:99px; height:5px; overflow:hidden; margin-top:7px; }
 .prog-fill { height:100%; border-radius:99px; transition:width .5s cubic-bezier(.4,0,.2,1); }
 
-/* ═══════════════════════════════
-   TRANSACTION ROW
-═══════════════════════════════ */
-.tx-row {
-  display:flex; align-items:center; gap:12px;
-  padding:12px 16px;
-}
+.tx-row { display:flex; align-items:center; gap:12px; padding:12px 16px; }
 .tx-row + .tx-row { border-top:1px solid var(--border); }
 .tx-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
 .tx-info { flex:1; min-width:0; }
@@ -189,9 +150,6 @@ input[type="date"] { -webkit-appearance:none; }
 .tx-sub  { font-size:11px; color:var(--text3); margin-top:1px; }
 .tx-amt  { font-size:15px; font-weight:900; flex-shrink:0; }
 
-/* ═══════════════════════════════
-   CATEGORY CHIPS
-═══════════════════════════════ */
 .cat-grid { display:flex; flex-wrap:wrap; gap:7px; }
 .cat-chip {
   display:flex; align-items:center; gap:6px;
@@ -203,9 +161,6 @@ input[type="date"] { -webkit-appearance:none; }
 }
 .cat-chip.active { border-color:currentColor; }
 
-/* ═══════════════════════════════
-   INPUTS
-═══════════════════════════════ */
 .inp {
   width:100%; background:var(--surface2); border:1.5px solid var(--border);
   border-radius:var(--r-sm); padding:12px 14px; font-size:15px;
@@ -216,20 +171,15 @@ input[type="date"] { -webkit-appearance:none; }
 .inp-big { font-size:28px; font-weight:900; text-align:center; padding:14px; }
 select.inp { cursor:pointer; }
 
-/* ═══════════════════════════════
-   BUTTONS
-═══════════════════════════════ */
 .btn { width:100%; border:none; border-radius:var(--r); padding:14px; font-size:15px; font-weight:800; color:#fff; display:block; text-align:center; font-family:inherit; cursor:pointer; transition:opacity .15s; }
 .btn:active { opacity:.85; }
-.btn-ghost { background:var(--surface2) !important; color:var(--text) !important; border:1.5px solid var(--border); }
+.btn-ghost  { background:var(--surface2) !important; color:var(--text) !important; border:1.5px solid var(--border); }
 .btn-danger { background:var(--expense-bg) !important; color:var(--expense) !important; border:none; }
 .btn-income  { background:var(--income) !important; }
 .btn-expense { background:var(--expense) !important; }
 .btn-accent  { background:var(--theme-accent) !important; }
+.btn-commit  { background:var(--commit) !important; }
 
-/* ═══════════════════════════════
-   CHART (pure CSS donut)
-═══════════════════════════════ */
 .chart-wrap { display:flex; align-items:center; gap:16px; padding:16px 18px; }
 .donut-wrap { position:relative; width:110px; height:110px; flex-shrink:0; }
 .donut-wrap svg { transform:rotate(-90deg); }
@@ -242,9 +192,6 @@ select.inp { cursor:pointer; }
 .legend-lbl { flex:1; font-size:12px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .legend-val { font-size:12px; font-weight:800; color:var(--text2); }
 
-/* ═══════════════════════════════
-   TAB BAR
-═══════════════════════════════ */
 .tabbar {
   position:fixed; bottom:0; left:50%; transform:translateX(-50%);
   width:100%; max-width:430px;
@@ -261,28 +208,14 @@ select.inp { cursor:pointer; }
 .tab-icon { font-size:20px; line-height:1; }
 .tab-lbl  { font-size:10px; font-weight:700; }
 
-/* ═══════════════════════════════
-   BACK BUTTON
-═══════════════════════════════ */
 .back-btn {
   width:40px; height:40px; border-radius:12px; flex-shrink:0;
   background:rgba(255,255,255,.2); border:1.5px solid rgba(255,255,255,.3);
   color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center;
   cursor:pointer;
 }
-.back-btn-light {
-  background:var(--surface2); border:1.5px solid var(--border);
-  color:var(--text);
-}
+.back-btn-light { background:var(--surface2); border:1.5px solid var(--border); color:var(--text); }
 
-/* ═══════════════════════════════
-   BADGE / PILL
-═══════════════════════════════ */
-.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
-
-/* ═══════════════════════════════
-   TOAST
-═══════════════════════════════ */
 .toast {
   position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-10px);
   background:var(--text); color:#fff; border-radius:12px; padding:10px 20px;
@@ -291,9 +224,6 @@ select.inp { cursor:pointer; }
 }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
-/* ═══════════════════════════════
-   MODAL OVERLAY
-═══════════════════════════════ */
 .overlay {
   position:fixed; inset:0; background:rgba(17,24,39,.5);
   z-index:300; display:none; align-items:flex-end;
@@ -304,25 +234,17 @@ select.inp { cursor:pointer; }
   background:var(--surface); width:100%; border-radius:22px 22px 0 0;
   padding:28px 20px; border-top:1px solid var(--border);
   box-shadow:0 -8px 40px rgba(0,0,0,.12);
+  max-height:85vh; overflow-y:auto;
 }
 .sheet-handle { width:36px; height:4px; background:var(--border); border-radius:99px; margin:0 auto 20px; }
 
-/* ═══════════════════════════════
-   DIVIDER
-═══════════════════════════════ */
 .divider { height:1px; background:var(--border); margin:0; }
 
-/* ═══════════════════════════════
-   EMPTY STATE
-═══════════════════════════════ */
 .empty { text-align:center; padding:60px 24px; }
 .empty-icon { font-size:48px; margin-bottom:12px; }
 .empty-title { font-size:16px; font-weight:800; color:var(--text); margin-bottom:6px; }
 .empty-body  { font-size:13px; color:var(--text3); line-height:1.7; }
 
-/* ═══════════════════════════════
-   TABLE
-═══════════════════════════════ */
 .tbl-wrap { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; font-size:12px; }
 th { padding:9px 12px; background:var(--surface2); color:var(--text2); font-weight:800; text-align:right; border-bottom:1px solid var(--border); font-size:11px; letter-spacing:.5px; }
@@ -332,9 +254,6 @@ tr:last-child td { border-bottom:none; }
 .td-exp { color:var(--expense); font-weight:800; }
 .td-bal { font-weight:900; }
 
-/* ═══════════════════════════════
-   ONBOARD
-═══════════════════════════════ */
 .onboard { min-height:100vh; background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; text-align:center; }
 .ob-emoji { font-size:72px; margin-bottom:24px; }
 .ob-title { font-size:24px; font-weight:900; color:var(--text); margin-bottom:10px; line-height:1.3; }
@@ -344,29 +263,72 @@ tr:last-child td { border-bottom:none; }
 .ob-dot.active { background:var(--theme-accent); width:24px; }
 .ob-dot:not(.active) { width:7px; }
 
-/* ═══════════════════════════════
-   REPORT CHART BAR
-═══════════════════════════════ */
 .bar-chart { display:flex; flex-direction:column; gap:10px; }
 .bar-row { display:flex; align-items:center; gap:10px; }
 .bar-row-lbl { width:80px; font-size:12px; font-weight:700; color:var(--text2); text-align:right; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .bar-track { flex:1; background:var(--surface2); border-radius:99px; height:8px; overflow:hidden; }
 .bar-fill  { height:100%; border-radius:99px; transition:width .5s; }
 .bar-val   { font-size:12px; font-weight:800; color:var(--text); flex-shrink:0; width:70px; text-align:left; }
+
+/* ── ALERT BANNERS ── */
+.alert-banner {
+  border-radius:var(--r);
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.alert-warn { background:var(--amber-bg); border:1.5px solid #FCD34D; }
+.alert-over { background:var(--expense-bg); border:1.5px solid #FCA5A5; }
+.alert-icon { font-size:20px; flex-shrink:0; }
+.alert-msg  { flex:1; font-size:13px; font-weight:700; }
+.alert-msg.warn { color:var(--amber); }
+.alert-msg.over { color:var(--expense); }
+
+/* ── COMMIT BANNER ── */
+.commit-banner {
+  background:linear-gradient(135deg,#7C3AED,#5B21B6);
+  border-radius:var(--r);
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+}
+.commit-banner-info { flex:1; }
+.commit-banner-title { font-size:14px; font-weight:900; color:#fff; margin-bottom:2px; }
+.commit-banner-sub   { font-size:12px; color:rgba(255,255,255,.7); }
+.commit-banner-arrow { font-size:18px; color:rgba(255,255,255,.7); }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <div class="toast" id="toast"></div>
+
+<!-- Delete / Confirm Modal -->
 <div class="overlay" id="modal-overlay">
   <div class="sheet" id="modal-sheet">
     <div class="sheet-handle"></div>
     <div id="modal-title" style="font-size:17px;font-weight:900;margin-bottom:6px;color:var(--text)"></div>
     <div id="modal-body"  style="font-size:13px;color:var(--text2);margin-bottom:16px"></div>
-    <div id="modal-warn" style="display:none;font-size:12px;color:var(--expense);margin-bottom:12px">⚠️ سيتم حذف كل ما بداخله</div>
+    <div id="modal-warn" style="display:none;font-size:12px;color:var(--expense);margin-bottom:12px">سيتم حذف كل ما بداخله</div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-danger" id="modal-confirm">حذف</button>
       <button class="btn btn-ghost"  id="modal-cancel">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- Commitments Apply Sheet -->
+<div class="overlay" id="commit-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">📋 الالتزامات الشهرية</div>
+    <div id="commit-subtitle" style="font-size:13px;color:var(--text2);margin-bottom:16px;"></div>
+    <div id="commit-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-commit" id="commit-apply-btn">✅ تطبيق الكل</button>
+      <button class="btn btn-ghost" id="commit-skip-btn">تخطي</button>
     </div>
   </div>
 </div>
@@ -377,34 +339,32 @@ tr:last-child td { border-bottom:none; }
 // ════════════════════════════════════════════
 var CUR = "د.ب";
 var MN  = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
-var MNS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 
-// Default category seeds (used only on first run)
 var DEFAULT_EXP_CATS = [
-  {id:"groceries",   lbl:"بقالة",         em:"🛒", c:"#0EA370"},
-  {id:"food",        lbl:"طعام",          em:"🍽️", c:"#F97316"},
-  {id:"debt",        lbl:"ديون",          em:"💳", c:"#E5484D"},
-  {id:"children",    lbl:"أطفال",         em:"👶", c:"#EC4899"},
-  {id:"car",         lbl:"سيارة",         em:"🚗", c:"#6366F1"},
-  {id:"fuel",        lbl:"وقود",          em:"⛽", c:"#8B5CF6"},
-  {id:"health",      lbl:"صحة",           em:"🏥", c:"#14B8A6"},
-  {id:"home",        lbl:"بيت",           em:"🏠", c:"#3B82F6"},
-  {id:"electricity", lbl:"كهرباء",        em:"💡", c:"#EAB308"},
-  {id:"mobile",      lbl:"موبايل",        em:"📱", c:"#06B6D4"},
-  {id:"shopping",    lbl:"مشتريات",       em:"🛍️", c:"#A855F7"},
-  {id:"entertain",   lbl:"ترفيه",         em:"🎮", c:"#F43F5E"},
-  {id:"travel",      lbl:"سفر",           em:"✈️", c:"#0EA5E9"},
-  {id:"other",       lbl:"أخرى",          em:"📦", c:"#9CA3AF"},
+  {id:"groceries",   lbl:"بقالة",    em:"🛒", c:"#0EA370"},
+  {id:"food",        lbl:"طعام",     em:"🍽️", c:"#F97316"},
+  {id:"debt",        lbl:"ديون",     em:"💳", c:"#E5484D"},
+  {id:"children",    lbl:"أطفال",    em:"👶", c:"#EC4899"},
+  {id:"car",         lbl:"سيارة",    em:"🚗", c:"#6366F1"},
+  {id:"fuel",        lbl:"وقود",     em:"⛽", c:"#8B5CF6"},
+  {id:"health",      lbl:"صحة",      em:"🏥", c:"#14B8A6"},
+  {id:"home",        lbl:"بيت",      em:"🏠", c:"#3B82F6"},
+  {id:"electricity", lbl:"كهرباء",   em:"💡", c:"#EAB308"},
+  {id:"mobile",      lbl:"موبايل",   em:"📱", c:"#06B6D4"},
+  {id:"shopping",    lbl:"مشتريات",  em:"🛍️", c:"#A855F7"},
+  {id:"entertain",   lbl:"ترفيه",    em:"🎮", c:"#F43F5E"},
+  {id:"travel",      lbl:"سفر",      em:"✈️", c:"#0EA5E9"},
+  {id:"other",       lbl:"أخرى",     em:"📦", c:"#9CA3AF"},
 ];
 var DEFAULT_INC_CATS = [
-  {id:"salary",  lbl:"الراتب",    em:"💰", c:"#0EA370"},
-  {id:"income2", lbl:"دخل ثانوي",em:"💼", c:"#3B82F6"},
-  {id:"shop",    lbl:"المتجر",   em:"🏪", c:"#D97706"},
-  {id:"other",   lbl:"أخرى",     em:"📥", c:"#8B5CF6"},
+  {id:"salary",  lbl:"الراتب",     em:"💰", c:"#0EA370"},
+  {id:"income2", lbl:"دخل ثانوي", em:"💼", c:"#3B82F6"},
+  {id:"shop",    lbl:"المتجر",    em:"🏪", c:"#D97706"},
+  {id:"other",   lbl:"أخرى",      em:"📥", c:"#8B5CF6"},
 ];
-// Will be loaded from localStorage
-var EXP_CATS = [];
-var INC_CATS = [];
+
+// Commitment emoji options
+var COMMIT_EMOJIS = ["🏠","🚗","📱","💡","🌊","🎓","🏦","🛡️","📺","💊","🧹","🔧","💳","📋","🏋️","☕"];
 
 // ════════════════════════════════════════════
 //  STATE
@@ -412,14 +372,17 @@ var INC_CATS = [];
 function ld(k,d){try{var s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch(e){return d;}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
+var EXP_CATS = [];
+var INC_CATS = [];
+
 var S = {
-  txs:      ld("mb_tx",[]),
-  onboarded:ld("mb_on",false),
-  theme:    ld("mb_th","blue"),
-  expCats:  ld("mb_ec",null),
-  incCats:  ld("mb_ic",null),
+  txs:        ld("mb_tx",[]),
+  onboarded:  ld("mb_on",false),
+  theme:      ld("mb_th","blue"),
+  expCats:    ld("mb_ec",null),
+  incCats:    ld("mb_ic",null),
+  commits:    ld("mb_co",[]),   // [{id,name,amount,catId,emoji,appliedMonths:[]}]
 };
-// Init cats: load from storage or use defaults
 EXP_CATS = S.expCats ? S.expCats : DEFAULT_EXP_CATS.slice();
 INC_CATS = S.incCats ? S.incCats : DEFAULT_INC_CATS.slice();
 if(!S.expCats){S.expCats=EXP_CATS;}
@@ -431,21 +394,23 @@ function save(){
   sv("mb_th",S.theme);
   sv("mb_ec",S.expCats);
   sv("mb_ic",S.incCats);
+  sv("mb_co",S.commits);
 }
 
 // ════════════════════════════════════════════
 //  UI STATE
 // ════════════════════════════════════════════
 var UI = {
-  view:    S.onboarded ? "home" : "onboard",
-  tab:     "home",
-  month:   new Date().toISOString().slice(0,7),
-  obStep:  0,
-  editTx:  null,
-  editCat: null,
+  view:        S.onboarded ? "home" : "onboard",
+  tab:         "home",
+  month:       new Date().toISOString().slice(0,7),
+  obStep:      0,
+  editTx:      null,
+  editCat:     null,
   editCatType: "expense",
-  pivotData: null,
-  modalCb: null,
+  editCommit:  null,
+  pivotData:   null,
+  modalCb:     null,
 };
 
 // ════════════════════════════════════════════
@@ -456,10 +421,12 @@ function fmt(n){return Number(n||0).toFixed(3).replace(/\B(?=(\d{3})+(?!\d))/g,"
 function today(){return new Date().toISOString().slice(0,10);}
 function cleanN(v){return parseFloat(String(v||0).replace(/,/g,"").replace(/[^0-9.]/g,""))||0;}
 function monthLbl(ym){var p=ym.split("-");return MN[parseInt(p[1])-1]+" "+p[0];}
+function thisMonth(){return new Date().toISOString().slice(0,7);}
+
 function getCat(type,id){
   var arr=type==="income"?INC_CATS:EXP_CATS;
   for(var i=0;i<arr.length;i++){if(arr[i].id===id)return arr[i];}
-  return {id:"other",lbl:type==="income"?"أخرى":"أخرى",em:"📦",c:"#9CA3AF"};
+  return {id:"other",lbl:"أخرى",em:"📦",c:"#9CA3AF"};
 }
 function dataMonths(){
   var m={};
@@ -469,7 +436,7 @@ function dataMonths(){
   return arr;
 }
 function monthStats(ym){
-  var inc=0,exp=0,byEC={},byIC={};
+  var inc=0,exp=0,commitExp=0,byEC={},byIC={};
   for(var i=0;i<EXP_CATS.length;i++) byEC[EXP_CATS[i].id]=0;
   for(var i=0;i<INC_CATS.length;i++) byIC[INC_CATS[i].id]=0;
   var txs=[];
@@ -478,12 +445,31 @@ function monthStats(ym){
     if(t.date.slice(0,7)!==ym) continue;
     txs.push(t);
     if(t.type==="income"){inc+=t.amount;byIC[t.catId]=(byIC[t.catId]||0)+t.amount;}
-    else {exp+=t.amount;byEC[t.catId]=(byEC[t.catId]||0)+t.amount;}
+    else {
+      exp+=t.amount;
+      byEC[t.catId]=(byEC[t.catId]||0)+t.amount;
+      if(t.isCommit) commitExp+=t.amount;
+    }
   }
-  return{inc:inc,exp:exp,bal:inc-exp,txs:txs,byEC:byEC,byIC:byIC};
+  return{inc:inc,exp:exp,commitExp:commitExp,freeExp:exp-commitExp,bal:inc-exp,available:inc-commitExp,txs:txs,byEC:byEC,byIC:byIC};
 }
-function applyTheme(){
-  document.body.className=S.theme==="pink"?"pink":"";
+function applyTheme(){document.body.className=S.theme==="pink"?"pink":"";}
+
+// Pending commitments for this month
+function pendingCommits(){
+  var m=thisMonth();
+  var result=[];
+  for(var i=0;i<S.commits.length;i++){
+    var c=S.commits[i];
+    var applied=c.appliedMonths&&c.appliedMonths.indexOf(m)>=0;
+    if(!applied) result.push(c);
+  }
+  return result;
+}
+
+// Total monthly commitments amount
+function totalCommits(){
+  var t=0;for(var i=0;i<S.commits.length;i++)t+=S.commits[i].amount;return t;
 }
 
 // ════════════════════════════════════════════
@@ -502,23 +488,69 @@ function modal(title,body,warn,cb){
   document.getElementById("modal-overlay").classList.add("show");
   UI.modalCb=cb;
 }
-function closeModal(){
-  document.getElementById("modal-overlay").classList.remove("show");
-  UI.modalCb=null;
-}
+function closeModal(){document.getElementById("modal-overlay").classList.remove("show");UI.modalCb=null;}
 document.getElementById("modal-confirm").onclick=function(){if(UI.modalCb){UI.modalCb();closeModal();}};
 document.getElementById("modal-cancel").onclick=closeModal;
 document.getElementById("modal-overlay").onclick=function(e){if(e.target.id==="modal-overlay")closeModal();};
+
+// ── Commit sheet
+function openCommitSheet(){
+  var pending=pendingCommits();
+  if(!pending.length)return;
+  var total=0;for(var i=0;i<pending.length;i++)total+=pending[i].amount;
+  document.getElementById("commit-subtitle").textContent=
+    pending.length+" التزام بإجمالي "+fmt(total)+" "+CUR;
+  var list=document.getElementById("commit-list");
+  list.innerHTML="";
+  for(var i=0;i<pending.length;i++){
+    (function(c){
+      var cat=getCat("expense",c.catId);
+      var row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:12px;border-right:3px solid "+cat.c;
+      var icon=document.createElement("div");
+      icon.style.cssText="font-size:22px;flex-shrink:0;";icon.textContent=c.emoji||"💳";
+      var info=document.createElement("div");info.style.cssText="flex:1;min-width:0;";
+      var nm=document.createElement("div");nm.style.cssText="font-size:14px;font-weight:800;color:var(--text);";nm.textContent=c.name;
+      var sub=document.createElement("div");sub.style.cssText="font-size:11px;color:var(--text3);margin-top:2px;";sub.textContent=cat.em+" "+cat.lbl;
+      info.appendChild(nm);info.appendChild(sub);
+      var amt=document.createElement("div");amt.style.cssText="font-size:15px;font-weight:900;color:"+cat.c+";flex-shrink:0;";amt.textContent=fmt(c.amount)+" "+CUR;
+      row.appendChild(icon);row.appendChild(info);row.appendChild(amt);
+      list.appendChild(row);
+    })(pending[i]);
+  }
+  document.getElementById("commit-overlay").classList.add("show");
+}
+function closeCommitSheet(){document.getElementById("commit-overlay").classList.remove("show");}
+document.getElementById("commit-apply-btn").onclick=function(){
+  var m=thisMonth();
+  var pending=pendingCommits();
+  var ts=Date.now();
+  for(var i=0;i<pending.length;i++){
+    var c=pending[i];
+    S.txs.push({id:"co_"+ts+"_"+i,type:"expense",catId:c.catId,label:c.name,amount:c.amount,date:today(),note:"التزام ثابت",isCommit:true});
+    for(var j=0;j<S.commits.length;j++){
+      if(S.commits[j].id===c.id){
+        var am=S.commits[j].appliedMonths?S.commits[j].appliedMonths.slice():[];
+        am.push(m);
+        S.commits[j].appliedMonths=am;
+        break;
+      }
+    }
+  }
+  save();closeCommitSheet();toast("✅ تم تطبيق "+pending.length+" التزام");render();
+};
+document.getElementById("commit-skip-btn").onclick=closeCommitSheet;
+document.getElementById("commit-overlay").onclick=function(e){if(e.target.id==="commit-overlay")closeCommitSheet();};
 
 // ════════════════════════════════════════════
 //  DOM BUILDER
 // ════════════════════════════════════════════
 function el(tag,props,kids){
   var e=document.createElement(tag);
-  if(props) {
+  if(props){
     var keys=Object.keys(props);
     for(var i=0;i<keys.length;i++){
-      var k=keys[i], v=props[k];
+      var k=keys[i],v=props[k];
       if(k==="cls") e.className=v;
       else if(k==="sty"&&typeof v==="object"){var sk=Object.keys(v);for(var j=0;j<sk.length;j++)e.style[sk[j]]=v[sk[j]];}
       else if(k.slice(0,2)==="on"&&typeof v==="function") e.addEventListener(k.slice(2),v);
@@ -529,13 +561,12 @@ function el(tag,props,kids){
     var arr=Array.isArray(kids)?kids:[kids];
     for(var i=0;i<arr.length;i++){
       var c=arr[i];
-      if(c==null) continue;
+      if(c==null)continue;
       e.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(String(c)):c);
     }
   }
   return e;
 }
-function div(cls,sty,kids){return el("div",{cls:cls,sty:sty},kids);}
 function go(v){UI.view=v;render();}
 
 // ════════════════════════════════════════════
@@ -544,46 +575,27 @@ function go(v){UI.view=v;render();}
 function secTitle(txt,mt){
   var d=el("div",{cls:"sec-title"});
   if(mt) d.style.marginTop=mt;
-  d.textContent=txt; return d;
+  d.textContent=txt;return d;
 }
-
-function progBar(val,max,color){
-  if(!max) return null;
-  var pct=Math.min(100,(val/max)*100);
-  var over=val>max;
-  var wrap=el("div");
-  var track=el("div",{cls:"prog"});
-  var fill=el("div",{cls:"prog-fill",sty:{width:pct+"%",background:over?"var(--expense)":color}});
-  track.appendChild(fill); wrap.appendChild(track);
-  var row=el("div",{sty:{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:"11px",fontWeight:"700"}});
-  row.appendChild(el("span",{sty:{color:"var(--text3)"}},Math.round(pct)+"%"));
-  var rem=over
-    ? el("span",{sty:{color:"var(--expense)"}},"تجاوز "+fmt(val-max)+" "+CUR)
-    : el("span",{sty:{color:"var(--text2)"}},"متبقي "+fmt(max-val)+" "+CUR);
-  row.appendChild(rem); wrap.appendChild(row); return wrap;
-}
-
 function backBtn(to,light){
   var b=el("button",{cls:light?"back-btn":"back-btn back-btn-light",onclick:function(){go(to);}});
-  b.textContent="→"; return b;
+  b.textContent="→";return b;
 }
-
 function inpEl(attrs){
-  var extra=attrs.sty||null; delete attrs.sty;
+  var extra=attrs.sty||null;delete attrs.sty;
   attrs.cls=(attrs.cls||"inp");
   var i=el("input",attrs);
   if(extra){var sk=Object.keys(extra);for(var j=0;j<sk.length;j++)i.style[sk[j]]=extra[sk[j]];}
   return i;
 }
-
 function tabBar(){
   var bar=el("div",{cls:"tabbar"});
   var tabs=[
-    {id:"home",    icon:"🏠",lbl:"الرئيسية"},
-    {id:"income",  icon:"💰",lbl:"الدخل"},
-    {id:"expense", icon:"💸",lbl:"المصروفات"},
-    {id:"report",  icon:"📊",lbl:"التقارير"},
-    {id:"more",    icon:"⋯", lbl:"المزيد"},
+    {id:"home",   icon:"🏠",lbl:"الرئيسية"},
+    {id:"income", icon:"💰",lbl:"الدخل"},
+    {id:"expense",icon:"💸",lbl:"المصروفات"},
+    {id:"report", icon:"📊",lbl:"التقارير"},
+    {id:"more",   icon:"⋯", lbl:"المزيد"},
   ];
   for(var i=0;i<tabs.length;i++){
     (function(t){
@@ -602,58 +614,64 @@ function tabBar(){
   }
   return bar;
 }
-
-function monthScroller(active,onPick,light){
+function monthScroller(active,onPick){
   var ms=el("div",{cls:"month-scroll"});
   var months=dataMonths();
   for(var i=0;i<months.length;i++){
     (function(m){
       var b=el("button",{cls:"mtab"+(m===active?" active":""),onclick:function(){onPick(m);}});
-      if(!light&&m!==active){b.style.color="rgba(255,255,255,.7)";}
-      b.textContent=monthLbl(m);
-      ms.appendChild(b);
+      b.textContent=monthLbl(m);ms.appendChild(b);
     })(months[i]);
   }
   return ms;
 }
-
-// Donut chart
-function donutChart(data, total, centerVal, centerLbl){
-  var size=110, r=44, cx=55, cy=55, sw=14;
+function donutChart(data,total,centerVal,centerLbl){
+  var size=110,r=44,cx=55,cy=55,sw=14;
   var circ=2*Math.PI*r;
   var svgNS="http://www.w3.org/2000/svg";
   var svg=document.createElementNS(svgNS,"svg");
-  svg.setAttribute("width",size); svg.setAttribute("height",size);
+  svg.setAttribute("width",size);svg.setAttribute("height",size);
   svg.setAttribute("viewBox","0 0 "+size+" "+size);
   svg.style.transform="rotate(-90deg)";
-  // background circle
   var bg=document.createElementNS(svgNS,"circle");
-  bg.setAttribute("cx",cx); bg.setAttribute("cy",cy); bg.setAttribute("r",r);
-  bg.setAttribute("fill","none"); bg.setAttribute("stroke","#F0F2F5");
-  bg.setAttribute("stroke-width",sw); svg.appendChild(bg);
+  bg.setAttribute("cx",cx);bg.setAttribute("cy",cy);bg.setAttribute("r",r);
+  bg.setAttribute("fill","none");bg.setAttribute("stroke","#F0F2F5");bg.setAttribute("stroke-width",sw);
+  svg.appendChild(bg);
   var offset=0;
   for(var i=0;i<data.length;i++){
-    var d=data[i];
-    if(!d.v) continue;
-    var pct=d.v/total;
-    var dash=pct*circ;
+    var d=data[i];if(!d.v)continue;
+    var pct=d.v/total,dash=pct*circ;
     var c=document.createElementNS(svgNS,"circle");
-    c.setAttribute("cx",cx); c.setAttribute("cy",cy); c.setAttribute("r",r);
-    c.setAttribute("fill","none"); c.setAttribute("stroke",d.color);
-    c.setAttribute("stroke-width",sw);
+    c.setAttribute("cx",cx);c.setAttribute("cy",cy);c.setAttribute("r",r);
+    c.setAttribute("fill","none");c.setAttribute("stroke",d.color);c.setAttribute("stroke-width",sw);
     c.setAttribute("stroke-dasharray",dash+" "+(circ-dash));
-    c.setAttribute("stroke-dashoffset",-offset);
-    c.setAttribute("stroke-linecap","butt");
-    svg.appendChild(c);
-    offset+=dash;
+    c.setAttribute("stroke-dashoffset",-offset);c.setAttribute("stroke-linecap","butt");
+    svg.appendChild(c);offset+=dash;
   }
-  var wrap=el("div",{cls:"donut-wrap"});
-  wrap.appendChild(svg);
+  var wrap=el("div",{cls:"donut-wrap"});wrap.appendChild(svg);
   var center=el("div",{cls:"donut-center"});
   center.appendChild(el("div",{cls:"donut-center-val"},centerVal));
   center.appendChild(el("div",{cls:"donut-center-lbl"},centerLbl));
-  wrap.appendChild(center);
-  return wrap;
+  wrap.appendChild(center);return wrap;
+}
+
+// ════════════════════════════════════════════
+//  ALERTS BUILDER
+// ════════════════════════════════════════════
+function buildAlerts(st){
+  var alerts=[];
+  // Check spending vs available (income - commits)
+  if(st.inc>0&&st.available>0){
+    var freeSpent=st.freeExp;
+    var avail=st.available;
+    var pct=(freeSpent/avail)*100;
+    if(pct>=100){
+      alerts.push({type:"over",msg:"🚨 تجاوزت المبلغ المتاح للإنفاق بـ "+fmt(freeSpent-avail)+" "+CUR});
+    } else if(pct>=80){
+      alerts.push({type:"warn",msg:"⚠️ استهلكت "+Math.round(pct)+"% من المبلغ المتاح للإنفاق"});
+    }
+  }
+  return alerts;
 }
 
 // ════════════════════════════════════════════
@@ -662,9 +680,9 @@ function donutChart(data, total, centerVal, centerLbl){
 function pageOnboard(){
   var slides=[
     {em:"💰",title:"ميزانية البيت",body:"تتبع دخلك ومصروفاتك بذكاء بالدينار البحريني"},
+    {em:"📋",title:"الالتزامات الثابتة",body:"سجّل إيجارك وأقساطك مرة واحدة وتُطبَّق تلقائياً كل شهر"},
     {em:"📊",title:"تقارير واضحة",body:"شاهد رصيدك الشهري والسنوي ونسبة إنفاقك دفعة واحدة"},
     {em:"⚡",title:"إضافة سريعة",body:"سجّل أي مصروف أو دخل في ثوانٍ من الشاشة الرئيسية"},
-    {em:"📂",title:"استيراد Excel",body:"حوّل ملف الميزانية القديم تلقائياً بضغطة واحدة"},
   ];
   var s=slides[UI.obStep];
   var wrap=el("div",{cls:"onboard"});
@@ -672,21 +690,14 @@ function pageOnboard(){
   wrap.appendChild(el("div",{cls:"ob-title"},s.title));
   wrap.appendChild(el("div",{cls:"ob-body"},s.body));
   var dots=el("div",{cls:"ob-dots"});
-  for(var i=0;i<slides.length;i++){
-    dots.appendChild(el("div",{cls:"ob-dot"+(i===UI.obStep?" active":"")}));
-  }
+  for(var i=0;i<slides.length;i++) dots.appendChild(el("div",{cls:"ob-dot"+(i===UI.obStep?" active":"")}));
   wrap.appendChild(dots);
-  wrap.appendChild(el("button",{cls:"btn btn-accent",
-    sty:{width:"280px",fontSize:"16px",padding:"15px"},
-    onclick:function(){
-      if(UI.obStep<slides.length-1){UI.obStep++;render();}
-      else{S.onboarded=true;save();go("home");}
-    }},UI.obStep<slides.length-1?"التالي →":"ابدأ الآن ✓"));
+  wrap.appendChild(el("button",{cls:"btn btn-accent",sty:{width:"280px",fontSize:"16px",padding:"15px"},onclick:function(){
+    if(UI.obStep<slides.length-1){UI.obStep++;render();}
+    else{S.onboarded=true;save();go("home");}
+  }},UI.obStep<slides.length-1?"التالي →":"ابدأ الآن ✓"));
   if(UI.obStep>0){
-    wrap.appendChild(el("button",{
-      sty:{marginTop:12,background:"none",border:"none",color:"var(--text3)",fontSize:14,cursor:"pointer",fontFamily:"inherit"},
-      onclick:function(){UI.obStep--;render();}
-    },"← رجوع"));
+    wrap.appendChild(el("button",{sty:{marginTop:12,background:"none",border:"none",color:"var(--text3)",fontSize:14,cursor:"pointer",fontFamily:"inherit"},onclick:function(){UI.obStep--;render();}},"← رجوع"));
   }
   return wrap;
 }
@@ -700,10 +711,8 @@ function pageHome(){
   var st=monthStats(ym);
   var page=el("div",{cls:"page"});
 
-  // ── Header
+  // Header
   var hdr=el("div",{cls:"hdr"});
-
-  // Top row
   var topRow=el("div",{sty:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}});
   topRow.appendChild(el("div",null,[
     el("div",{cls:"hdr-title"},"ميزانية البيت"),
@@ -717,44 +726,71 @@ function pageHome(){
   },"⚙️"));
   hdr.appendChild(topRow);
 
-  // ── SIGNATURE: Balance Scale Card
+  // Balance Card — 4-row breakdown
   var bc=el("div",{cls:"balance-card"});
   var bal=st.bal;
   bc.appendChild(el("div",{cls:"balance-main"},[
     el("span",{cls:"balance-num",sty:{color:bal<0?"#FCA5A5":"#fff"}},fmt(Math.abs(bal))),
     el("span",{cls:"balance-cur"},CUR)
   ]));
-  bc.appendChild(el("div",{cls:"balance-label"},bal>=0?"↑ فائض هذا الشهر":"↓ عجز هذا الشهر"));
-  // Scale
-  var scale=el("div",{cls:"balance-scale"});
-  var incSide=el("div",{cls:"scale-side right"});
-  incSide.appendChild(el("div",{cls:"scale-lbl"},"الدخل"));
-  incSide.appendChild(el("div",{cls:"scale-val inc"},fmt(st.inc)));
-  scale.appendChild(incSide);
-  scale.appendChild(el("div",{cls:"scale-divider"}));
-  var expSide=el("div",{cls:"scale-side left"});
-  expSide.appendChild(el("div",{cls:"scale-lbl"},"المصروفات"));
-  expSide.appendChild(el("div",{cls:"scale-val exp"},fmt(st.exp)));
-  scale.appendChild(expSide);
-  bc.appendChild(scale);
-  // Progress bar showing expense ratio
-  if(st.inc>0){
-    var pct=Math.min(100,(st.exp/st.inc)*100);
+  bc.appendChild(el("div",{cls:"balance-label"},bal>=0?"↑ الرصيد هذا الشهر":"↓ عجز هذا الشهر"));
+
+  // 4-col grid: income | commits | free spending | balance
+  var grid=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",alignItems:"center",gap:"0"}});
+  function scol(lbl,val,valCls){
+    var d=el("div",{cls:"scale-side",sty:{textAlign:"center",padding:"0 6px"}});
+    d.appendChild(el("div",{cls:"scale-lbl"},lbl));
+    d.appendChild(el("div",{cls:"scale-val "+valCls},fmt(val)));
+    return d;
+  }
+  grid.appendChild(scol("الدخل",st.inc,"inc"));
+  grid.appendChild(el("div",{cls:"scale-divider"}));
+  grid.appendChild(scol("ثابتة",st.commitExp,"com"));
+  grid.appendChild(el("div",{cls:"scale-divider"}));
+  grid.appendChild(scol("متاح",st.available,"inc"));
+  grid.appendChild(el("div",{cls:"scale-divider"}));
+  grid.appendChild(scol("مصاريف",st.freeExp,"exp"));
+  bc.appendChild(grid);
+
+  // Progress bar: free spending vs available
+  if(st.available>0){
+    var pct=Math.min(100,(st.freeExp/st.available)*100);
     var bw=el("div",{cls:"scale-bar-wrap"});
-    var bf=el("div",{cls:"scale-bar-fill",sty:{width:pct+"%",background:pct>90?"#FCA5A5":pct>70?"#FCD34D":"#6EE7B7"}});
-    bw.appendChild(bf); bc.appendChild(bw);
-    bc.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:"11px",color:"rgba(255,255,255,.55)",fontWeight:"700"}},[
-      el("span",null,Math.round(pct)+"% مُنفق"),
-      el("span",null,"متبقي "+fmt(Math.max(0,st.inc-st.exp))+" "+CUR)
+    var bf=el("div",{cls:"scale-bar-fill",sty:{width:pct+"%",background:pct>100?"#FCA5A5":pct>80?"#FCD34D":"#6EE7B7"}});
+    bw.appendChild(bf);bc.appendChild(bw);
+    bc.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",marginTop:"6px",fontSize:"11px",color:"rgba(255,255,255,.55)",fontWeight:"700"}},[
+      el("span",null,Math.round(pct)+"% مُنفق من المتاح"),
+      el("span",null,"متبقي "+fmt(Math.max(0,st.available-st.freeExp))+" "+CUR)
     ]));
   }
   hdr.appendChild(bc);
-
-  // Month scroller
   hdr.appendChild(monthScroller(ym,function(m){UI.month=m;go("home");}));
   page.appendChild(hdr);
 
   var body=el("div",{cls:"content"});
+
+  // ── Commitments banner (if pending)
+  var pending=pendingCommits();
+  if(pending.length){
+    var cb=el("div",{cls:"commit-banner",onclick:openCommitSheet});
+    cb.appendChild(el("div",{sty:{fontSize:"26px",flexShrink:"0"}},"📋"));
+    var ci=el("div",{cls:"commit-banner-info"});
+    ci.appendChild(el("div",{cls:"commit-banner-title"},"لديك "+pending.length+" التزام شهري"));
+    var pt=0;for(var i=0;i<pending.length;i++)pt+=pending[i].amount;
+    ci.appendChild(el("div",{cls:"commit-banner-sub"},"إجمالي "+fmt(pt)+" "+CUR+" — اضغط للتطبيق"));
+    cb.appendChild(ci);
+    cb.appendChild(el("div",{cls:"commit-banner-arrow"},"←"));
+    body.appendChild(cb);
+  }
+
+  // ── Alerts
+  var alerts=buildAlerts(st);
+  for(var i=0;i<alerts.length;i++){
+    var a=alerts[i];
+    var ab=el("div",{cls:"alert-banner "+(a.type==="over"?"alert-over":"alert-warn")});
+    ab.appendChild(el("div",{cls:"alert-msg "+(a.type==="over"?"over":"warn")},a.msg));
+    body.appendChild(ab);
+  }
 
   // ── Quick Add
   var qa=el("div",{cls:"quick-bar"});
@@ -762,7 +798,7 @@ function pageHome(){
   qa.appendChild(el("button",{cls:"quick-btn quick-exp",onclick:function(){UI.editTx=null;go("addExp");}},["💸 ","إضافة مصروف"]));
   body.appendChild(qa);
 
-  // ── Top expense categories donut
+  // ── Donut chart
   var expData=[];
   for(var i=0;i<EXP_CATS.length;i++){
     var v=st.byEC[EXP_CATS[i].id]||0;
@@ -770,14 +806,11 @@ function pageHome(){
   }
   expData.sort(function(a,b){return b.v-a.v;});
   var top5=expData.slice(0,5);
-
   if(top5.length){
     body.appendChild(secTitle("توزيع المصروفات"));
     var chartCard=el("div",{cls:"card"});
     var cw=el("div",{cls:"chart-wrap"});
-    // Donut
     cw.appendChild(donutChart(top5,st.exp,fmt(st.exp),"مصروفات"));
-    // Legend
     var legend=el("div",{cls:"chart-legend"});
     for(var i=0;i<top5.length;i++){
       var d=top5[i];
@@ -787,9 +820,7 @@ function pageHome(){
       lr.appendChild(el("div",{cls:"legend-val"},fmt(d.v)));
       legend.appendChild(lr);
     }
-    cw.appendChild(legend);
-    chartCard.appendChild(cw);
-    body.appendChild(chartCard);
+    cw.appendChild(legend);chartCard.appendChild(cw);body.appendChild(chartCard);
   }
 
   // ── Recent transactions
@@ -800,22 +831,21 @@ function pageHome(){
     for(var i=0;i<recent.length;i++){
       (function(t){
         var cat=getCat(t.type,t.catId);
-        var row=el("div",{cls:"tx-row",sty:{cursor:"pointer"},onclick:function(){UI.editTx=t;go("editTx");}});
-        row.appendChild(el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},cat.em));
+        var row=el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:"1px solid var(--border)"},onclick:function(){UI.editTx=t;go("editTx");}});
+        row.appendChild(el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},t.isCommit?"📋":cat.em));
         var info=el("div",{cls:"tx-info"});
         info.appendChild(el("div",{cls:"tx-name"},t.label||cat.lbl));
-        info.appendChild(el("div",{cls:"tx-sub"},t.date+(t.note?" · "+t.note:"")));
+        info.appendChild(el("div",{cls:"tx-sub"},t.date+(t.isCommit?" · التزام ثابت":t.note?" · "+t.note:"")));
         row.appendChild(info);
         var amt=el("div",{cls:"tx-amt",sty:{color:t.type==="income"?"var(--income)":"var(--expense)"}});
         amt.textContent=(t.type==="income"?"+":"-")+fmt(t.amount);
-        row.appendChild(amt);
-        rc.appendChild(row);
+        row.appendChild(amt);rc.appendChild(row);
       })(recent[i]);
     }
     body.appendChild(rc);
   }
 
-  if(!st.txs.length){
+  if(!st.txs.length&&!pending.length){
     body.appendChild(el("div",{cls:"empty"},[
       el("div",{cls:"empty-icon"},"📊"),
       el("div",{cls:"empty-title"},"لا توجد معاملات"),
@@ -838,7 +868,6 @@ function pageTxList(type){
   var total=type==="income"?st.inc:st.exp;
   var cats=type==="income"?INC_CATS:EXP_CATS;
   var byC=type==="income"?st.byIC:st.byEC;
-  var color=type==="income"?"var(--income)":"var(--expense)";
   var txs=st.txs.filter(function(t){return t.type===type;}).sort(function(a,b){return a.date<b.date?1:-1;});
 
   var page=el("div",{cls:"page"});
@@ -848,12 +877,31 @@ function pageTxList(type){
       el("div",{cls:"hdr-title"},type==="income"?"مصادر الدخل":"تفاصيل المصروفات"),
       el("div",{sty:{fontSize:"26px",fontWeight:"900",color:"#fff",letterSpacing:"-0.5px"}},fmt(total)+" "+CUR)
     ]),
-    el("button",{cls:"back-btn",onclick:function(){go("home");}},[ "←"])
+    el("button",{cls:"back-btn",onclick:function(){go("home");}},["←"])
   ]));
   hdr.appendChild(monthScroller(ym,function(m){UI.month=m;go(type==="income"?"incList":"expList");}));
   page.appendChild(hdr);
 
   var body=el("div",{cls:"content"});
+
+  // Summary row for expense page
+  if(type==="expense"&&st.commitExp>0){
+    var sr=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}});
+    var sdata=[
+      {l:"الإجمالي",v:st.exp,c:"var(--expense)"},
+      {l:"التزامات",v:st.commitExp,c:"var(--commit)"},
+      {l:"مصاريف عادية",v:st.freeExp,c:"var(--text)"},
+    ];
+    for(var i=0;i<sdata.length;i++){
+      var s=sdata[i];
+      var sc=el("div",{cls:"stat-card"});
+      sc.appendChild(el("div",{cls:"stat-lbl"},s.l));
+      sc.appendChild(el("div",{cls:"stat-val",sty:{color:s.c,fontSize:"14px"}},fmt(s.v)));
+      sc.appendChild(el("div",{cls:"stat-cur"},CUR));
+      sr.appendChild(sc);
+    }
+    body.appendChild(sr);
+  }
 
   // Category breakdown
   var catTotals=[];
@@ -862,13 +910,12 @@ function pageTxList(type){
     if(v>0) catTotals.push({cat:cats[i],v:v});
   }
   catTotals.sort(function(a,b){return b.v-a.v;});
-
   if(catTotals.length){
     body.appendChild(secTitle("حسب الفئة"));
     var cc=el("div",{cls:"card"});
     for(var i=0;i<catTotals.length;i++){
       (function(x,idx){
-        var row=el("div",{cls:"tx-row"+(idx<catTotals.length-1?"":" "),sty:{cursor:"pointer",borderBottom:idx<catTotals.length-1?"1px solid var(--border)":"none"},
+        var row=el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:idx<catTotals.length-1?"1px solid var(--border)":"none"},
           onclick:function(){UI.editTx=null;go(type==="income"?"addInc":"addExp");}});
         row.appendChild(el("div",{cls:"tx-icon",sty:{background:x.cat.c+"18"}},x.cat.em));
         var info=el("div",{cls:"tx-info"});
@@ -892,10 +939,10 @@ function pageTxList(type){
         var cat=getCat(t.type,t.catId);
         var row=el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:idx<txs.length-1?"1px solid var(--border)":"none"},
           onclick:function(){UI.editTx=t;go("editTx");}});
-        row.appendChild(el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},cat.em));
+        row.appendChild(el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},t.isCommit?"📋":cat.em));
         var info=el("div",{cls:"tx-info"});
         info.appendChild(el("div",{cls:"tx-name"},t.label||cat.lbl));
-        info.appendChild(el("div",{cls:"tx-sub"},t.date));
+        info.appendChild(el("div",{cls:"tx-sub"},t.date+(t.isCommit?" · التزام ثابت":"")));
         row.appendChild(info);
         row.appendChild(el("div",{cls:"tx-amt",sty:{color:type==="income"?"var(--income)":"var(--expense)"}},fmt(t.amount)));
         tc.appendChild(row);
@@ -930,20 +977,17 @@ function pageAETx(type){
   if(isEdit) type=UI.editTx.type;
   var f=isEdit?UI.editTx:{type:type,catId:type==="income"?INC_CATS[0].id:EXP_CATS[0].id,label:"",amount:"",date:today(),note:""};
   var cats=type==="income"?INC_CATS:EXP_CATS;
-  var color=type==="income"?"var(--income)":"var(--expense)";
   var curCat=f.catId;
 
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
   hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[
-    el("button",{cls:"back-btn",onclick:function(){go(isEdit?(type==="income"?"incList":"expList"):(type==="income"?"incList":"expList"));}},["←"]),
-    el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل المعاملة":(type==="income"?"إضافة دخل ":"إضافة مصروف"))
+    el("button",{cls:"back-btn",onclick:function(){go(type==="income"?"incList":"expList");}},["←"]),
+    el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل المعاملة":(type==="income"?"إضافة دخل":"إضافة مصروف"))
   ]));
   page.appendChild(hdr);
 
   var body=el("div",{cls:"content"});
-
-  // Category FIRST
   body.appendChild(secTitle("الفئة"));
   var catGrid=el("div",{cls:"cat-grid"});
   for(var i=0;i<cats.length;i++){
@@ -954,12 +998,8 @@ function pageAETx(type){
         onclick:function(){
           curCat=c.id;
           var chips=catGrid.querySelectorAll(".cat-chip");
-          for(var j=0;j<chips.length;j++){
-            chips[j].className="cat-chip";
-            chips[j].style.borderColor="";chips[j].style.background="";chips[j].style.color="";
-          }
-          b.className="cat-chip active";
-          b.style.borderColor=c.c;b.style.background=c.c+"15";b.style.color=c.c;
+          for(var j=0;j<chips.length;j++){chips[j].className="cat-chip";chips[j].style.borderColor="";chips[j].style.background="";chips[j].style.color="";}
+          b.className="cat-chip active";b.style.borderColor=c.c;b.style.background=c.c+"15";b.style.color=c.c;
         }
       },[c.em," ",c.lbl]);
       catGrid.appendChild(b);
@@ -967,7 +1007,6 @@ function pageAETx(type){
   }
   body.appendChild(catGrid);
 
-  // Amount AFTER category
   body.appendChild(secTitle("المبلغ ("+CUR+")","4px"));
   var amtWrap=el("div",{sty:{position:"relative"}});
   var amtInp=inpEl({type:"number",step:"0.001",value:isEdit?String(f.amount):"",placeholder:"0.000",cls:"inp inp-big",sty:{paddingLeft:"52px"}});
@@ -975,31 +1014,24 @@ function pageAETx(type){
   amtWrap.appendChild(el("span",{sty:{position:"absolute",left:"16px",top:"50%",transform:"translateY(-50%)",fontSize:"13px",color:"var(--text3)",fontWeight:"700",pointerEvents:"none"}},CUR));
   body.appendChild(amtWrap);
 
-  // Description
   body.appendChild(secTitle("الوصف (اختياري)","4px"));
   var lblInp=inpEl({value:f.label||"",placeholder:"مثال: راتب يونيو"});
   body.appendChild(lblInp);
 
-  // Date
   body.appendChild(secTitle("التاريخ","4px"));
   var dateInp=inpEl({type:"date",value:f.date||today()});
   body.appendChild(dateInp);
 
-  // Note
   body.appendChild(secTitle("ملاحظة (اختياري)","4px"));
   var noteInp=inpEl({value:f.note||"",placeholder:"أي تفاصيل إضافية"});
   body.appendChild(noteInp);
 
-  // Buttons
   var saveFn=function(){
     var amount=parseFloat(amtInp.value);
     if(!amount||amount<=0){toast("أدخل مبلغًا صحيحًا");return;}
     if(isEdit){
       for(var i=0;i<S.txs.length;i++){
-        if(S.txs[i].id===f.id){
-          S.txs[i]=Object.assign({},S.txs[i],{catId:curCat,label:lblInp.value.trim(),amount:amount,date:dateInp.value||today(),note:noteInp.value.trim()});
-          break;
-        }
+        if(S.txs[i].id===f.id){S.txs[i]=Object.assign({},S.txs[i],{catId:curCat,label:lblInp.value.trim(),amount:amount,date:dateInp.value||today(),note:noteInp.value.trim()});break;}
       }
     } else {
       S.txs.push({id:uid(),type:type,catId:curCat,label:lblInp.value.trim(),amount:amount,date:dateInp.value||today(),note:noteInp.value.trim()});
@@ -1008,9 +1040,7 @@ function pageAETx(type){
   };
 
   var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"4px"}});
-  var saveBtn=el("button",{cls:"btn",sty:{background:type==="income"?"var(--income)":"var(--expense)"},onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة");
-  btnRow.appendChild(saveBtn);
-
+  btnRow.appendChild(el("button",{cls:"btn",sty:{background:type==="income"?"var(--income)":"var(--expense)"},onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
   if(isEdit){
     var fid=f.id;
     btnRow.appendChild(el("button",{cls:"btn btn-danger",sty:{width:"auto",padding:"14px 18px"},
@@ -1021,8 +1051,177 @@ function pageAETx(type){
     },"🗑️"));
   }
   body.appendChild(btnRow);
+  page.appendChild(body);return page;
+}
+
+// ════════════════════════════════════════════
+//  PAGE: COMMITMENTS LIST
+// ════════════════════════════════════════════
+function pageCommits(){
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"100px",background:"var(--bg)"}});
+  var hdr=el("div",{cls:"hdr"});
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px",marginBottom:"8px"}},[
+    backBtn("more"),
+    el("div",{sty:{flex:"1",fontSize:"20px",fontWeight:"900",color:"#fff"}},"الالتزامات الثابتة")
+  ]));
+  var tot=totalCommits();
+  hdr.appendChild(el("div",{sty:{fontSize:"13px",color:"rgba(255,255,255,.7)"}},[
+    S.commits.length+" التزام  ·  إجمالي شهري: ",
+    el("span",{sty:{fontWeight:"900",color:"#C4B5FD"}},fmt(tot)+" "+CUR)
+  ]));
+  page.appendChild(hdr);
+
+  var body=el("div",{cls:"content"});
+
+  if(!S.commits.length){
+    body.appendChild(el("div",{cls:"empty"},[
+      el("div",{cls:"empty-icon"},"📋"),
+      el("div",{cls:"empty-title"},"لا توجد التزامات بعد"),
+      el("div",{cls:"empty-body"},"أضف إيجارك، أقساطك، اشتراكاتك\nوستُطبَّق تلقائياً كل شهر بضغطة واحدة")
+    ]));
+  } else {
+    var m=thisMonth();
+    body.appendChild(secTitle("الالتزامات الشهرية"));
+    var card=el("div",{cls:"card",sty:{overflow:"hidden"}});
+    for(var i=0;i<S.commits.length;i++){
+      (function(c,idx){
+        var cat=getCat("expense",c.catId);
+        var applied=c.appliedMonths&&c.appliedMonths.indexOf(m)>=0;
+        var row=el("div",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"14px 16px",
+          borderBottom:idx<S.commits.length-1?"1px solid var(--border)":"none",
+          borderRight:"3px solid "+cat.c,cursor:"pointer"},
+          onclick:function(){UI.editCommit=Object.assign({},c);go("editCommit");}});
+        row.appendChild(el("div",{sty:{fontSize:"22px",flexShrink:"0"}},c.emoji||"💳"));
+        var info=el("div",{cls:"tx-info"});
+        info.appendChild(el("div",{cls:"tx-name"},c.name));
+        info.appendChild(el("div",{cls:"tx-sub"},cat.em+" "+cat.lbl+"  ·  "+(applied?"✅ طُبّق هذا الشهر":"⏳ لم يُطبَّق بعد")));
+        row.appendChild(info);
+        row.appendChild(el("div",{sty:{fontSize:"15px",fontWeight:"900",color:cat.c,flexShrink:"0"}},fmt(c.amount)+" "+CUR));
+        card.appendChild(row);
+      })(S.commits[i],i);
+    }
+    var totRow=el("div",{sty:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"var(--surface2)",borderTop:"1px solid var(--border)"}});
+    totRow.appendChild(el("span",{sty:{fontSize:"13px",fontWeight:"800",color:"var(--text2)"}},"الإجمالي الشهري"));
+    totRow.appendChild(el("span",{sty:{fontSize:"16px",fontWeight:"900",color:"var(--commit)"}},fmt(tot)+" "+CUR));
+    card.appendChild(totRow);
+    body.appendChild(card);
+
+    var pending=pendingCommits();
+    if(pending.length){
+      body.appendChild(el("button",{cls:"btn btn-commit",onclick:openCommitSheet},"📋 تطبيق "+pending.length+" التزام هذا الشهر"));
+    } else {
+      body.appendChild(el("div",{sty:{background:"var(--income-bg)",border:"1.5px solid #6EE7B7",borderRadius:"var(--r)",padding:"13px 16px",textAlign:"center",fontSize:"13px",fontWeight:"700",color:"var(--income)"}},"✅ تم تطبيق جميع الالتزامات هذا الشهر"));
+    }
+  }
+
   page.appendChild(body);
+  // FAB
+  page.appendChild(el("button",{cls:"btn btn-commit",
+    sty:{position:"fixed",bottom:"20px",left:"50%",transform:"translateX(-50%)",
+         width:"calc(100% - 32px)",maxWidth:"398px",
+         boxShadow:"0 4px 20px rgba(124,58,237,.35)",zIndex:"50",borderRadius:"14px"},
+    onclick:function(){UI.editCommit=null;go("editCommit");}
+  },"＋ إضافة التزام"));
   return page;
+}
+
+// ════════════════════════════════════════════
+//  PAGE: ADD / EDIT COMMITMENT
+// ════════════════════════════════════════════
+function pageAECommit(){
+  var isEdit=!!UI.editCommit;
+  var f=isEdit?UI.editCommit:{name:"",amount:"",catId:EXP_CATS[0].id,emoji:"💳",appliedMonths:[]};
+  var curCat=f.catId;
+  var curEmoji=f.emoji||"💳";
+
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"80px",background:"var(--bg)"}});
+  var hdr=el("div",{cls:"hdr"});
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[
+    backBtn("commitments"),
+    el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الالتزام":"التزام جديد")
+  ]));
+  page.appendChild(hdr);
+
+  var body=el("div",{cls:"content"});
+
+  // Emoji picker
+  body.appendChild(secTitle("الأيقونة"));
+  var epick=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
+  var selEmojiBtns=[];
+  for(var i=0;i<COMMIT_EMOJIS.length;i++){
+    (function(em,idx){
+      var active=curEmoji===em;
+      var b=el("button",{sty:{
+        width:"42px",height:"42px",borderRadius:"10px",border:"2px solid",
+        borderColor:active?"var(--commit)":"var(--border)",
+        background:active?"var(--commit-bg)":"var(--surface2)",
+        fontSize:"20px",cursor:"pointer"
+      },onclick:function(){
+        curEmoji=em;
+        for(var j=0;j<selEmojiBtns.length;j++){selEmojiBtns[j].style.borderColor="var(--border)";selEmojiBtns[j].style.background="var(--surface2)";}
+        b.style.borderColor="var(--commit)";b.style.background="var(--commit-bg)";
+      }},em);
+      selEmojiBtns.push(b);epick.appendChild(b);
+    })(COMMIT_EMOJIS[i],i);
+  }
+  body.appendChild(epick);
+
+  // Name
+  body.appendChild(secTitle("اسم الالتزام","4px"));
+  var ni=inpEl({value:f.name||"",placeholder:"مثال: إيجار البيت، قسط السيارة، اشتراك انترنت"});
+  body.appendChild(ni);
+
+  // Amount
+  body.appendChild(secTitle("المبلغ الشهري ("+CUR+")","4px"));
+  var aw=el("div",{sty:{position:"relative"}});
+  var ai=inpEl({type:"number",step:"0.001",value:f.amount?String(f.amount):"",placeholder:"0.000",cls:"inp inp-big",sty:{paddingLeft:"52px"}});
+  aw.appendChild(ai);
+  aw.appendChild(el("span",{sty:{position:"absolute",left:"16px",top:"50%",transform:"translateY(-50%)",fontSize:"13px",color:"var(--text3)",fontWeight:"700",pointerEvents:"none"}},CUR));
+  body.appendChild(aw);
+
+  // Category
+  body.appendChild(secTitle("الفئة","4px"));
+  var catGrid=el("div",{cls:"cat-grid"});
+  for(var i=0;i<EXP_CATS.length;i++){
+    (function(c){
+      var active=curCat===c.id;
+      var b=el("button",{cls:"cat-chip"+(active?" active":""),
+        sty:active?{borderColor:c.c,background:c.c+"15",color:c.c}:{},
+        onclick:function(){
+          curCat=c.id;
+          var chips=catGrid.querySelectorAll(".cat-chip");
+          for(var j=0;j<chips.length;j++){chips[j].className="cat-chip";chips[j].style.borderColor="";chips[j].style.background="";chips[j].style.color="";}
+          b.className="cat-chip active";b.style.borderColor=c.c;b.style.background=c.c+"15";b.style.color=c.c;
+        }
+      },[c.em," ",c.lbl]);
+      catGrid.appendChild(b);
+    })(EXP_CATS[i]);
+  }
+  body.appendChild(catGrid);
+
+  // Save
+  var saveFn=function(){
+    var name=ni.value.trim();if(!name){toast("أدخل اسم الالتزام");return;}
+    var amount=parseFloat(ai.value);if(!amount||amount<=0){toast("أدخل مبلغًا صحيحًا");return;}
+    var obj={id:isEdit?f.id:uid(),name:name,amount:amount,catId:curCat,emoji:curEmoji,appliedMonths:isEdit?(f.appliedMonths||[]):[]};
+    if(isEdit){for(var i=0;i<S.commits.length;i++)if(S.commits[i].id===f.id){S.commits[i]=obj;break;}}
+    else S.commits.push(obj);
+    save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go("commitments");
+  };
+
+  var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"4px"}});
+  btnRow.appendChild(el("button",{cls:"btn btn-commit",onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
+  if(isEdit){
+    var fid=f.id;
+    btnRow.appendChild(el("button",{cls:"btn btn-danger",sty:{width:"auto",padding:"14px 18px"},
+      onclick:function(){modal("حذف الالتزام؟",f.name,"",function(){
+        var nc=[];for(var i=0;i<S.commits.length;i++)if(S.commits[i].id!==fid)nc.push(S.commits[i]);
+        S.commits=nc;save();toast("تم الحذف");go("commitments");
+      });}
+    },"🗑️"));
+  }
+  body.appendChild(btnRow);
+  page.appendChild(body);return page;
 }
 
 // ════════════════════════════════════════════
@@ -1034,8 +1233,6 @@ function pageReport(){
   var ym=UI.month;
   var st=monthStats(ym);
   var year=ym.slice(0,4);
-
-  // Annual summary
   var yearMs=[];
   for(var i=0;i<allM.length;i++) if(allM[i].startsWith(year)) yearMs.push(allM[i]);
   var yInc=0,yExp=0;
@@ -1080,16 +1277,15 @@ function pageReport(){
   var tbody=el("tbody");
   var ymsRev=yearMs.slice().reverse();
   for(var i=0;i<ymsRev.length;i++){
-    var ms=monthStats(ymsRev[i]);
+    var ms2=monthStats(ymsRev[i]);
     var tr=el("tr");
     tr.appendChild(el("td",{sty:{fontWeight:"700"}},monthLbl(ymsRev[i])));
-    tr.appendChild(el("td",{cls:"td-inc"},fmt(ms.inc)));
-    tr.appendChild(el("td",{cls:"td-exp"},fmt(ms.exp)));
-    var bal=ms.inc-ms.exp;
-    tr.appendChild(el("td",{cls:"td-bal",sty:{color:bal>=0?"var(--income)":"var(--expense)"}},fmt(bal)));
+    tr.appendChild(el("td",{cls:"td-inc"},fmt(ms2.inc)));
+    tr.appendChild(el("td",{cls:"td-exp"},fmt(ms2.exp)));
+    var bal2=ms2.inc-ms2.exp;
+    tr.appendChild(el("td",{cls:"td-bal",sty:{color:bal2>=0?"var(--income)":"var(--expense)"}},fmt(bal2)));
     tbody.appendChild(tr);
   }
-  // totals row
   var tr2=el("tr",{sty:{background:"var(--surface2)"}});
   tr2.appendChild(el("td",{sty:{fontWeight:"900",fontSize:"12px"}},"المجموع"));
   tr2.appendChild(el("td",{cls:"td-inc"},fmt(yInc)));
@@ -1099,28 +1295,34 @@ function pageReport(){
   tbody.appendChild(tr2);
   tbl.appendChild(tbody);tw.appendChild(tbl);body.appendChild(tw);
 
-  // Selected month details
+  // Month details
   body.appendChild(secTitle("تفاصيل "+monthLbl(ym),"4px"));
-  var ms3=el("div",{cls:"stats-row"});
-  var ms3data=[{l:"الدخل",v:st.inc,c:"var(--income)"},{l:"المصروفات",v:st.exp,c:"var(--expense)"},{l:"الرصيد",v:st.bal,c:st.bal>=0?"var(--income)":"var(--expense)"}];
-  for(var i=0;i<ms3data.length;i++){
-    var s=ms3data[i];
+
+  // 4-stat row for selected month
+  var ms4=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}});
+  var ms4data=[
+    {l:"الدخل",v:st.inc,c:"var(--income)"},
+    {l:"المتاح للإنفاق",v:st.available,c:"var(--accent)"},
+    {l:"الالتزامات",v:st.commitExp,c:"var(--commit)"},
+    {l:"المصاريف العادية",v:st.freeExp,c:"var(--expense)"},
+  ];
+  for(var i=0;i<ms4data.length;i++){
+    var s=ms4data[i];
     var sc=el("div",{cls:"stat-card"});
     sc.appendChild(el("div",{cls:"stat-lbl"},s.l));
-    sc.appendChild(el("div",{cls:"stat-val",sty:{color:s.c}},fmt(Math.abs(s.v))));
+    sc.appendChild(el("div",{cls:"stat-val",sty:{color:s.c,fontSize:"15px"}},fmt(Math.abs(s.v))));
     sc.appendChild(el("div",{cls:"stat-cur"},CUR));
-    ms3.appendChild(sc);
+    ms4.appendChild(sc);
   }
-  body.appendChild(ms3);
+  body.appendChild(ms4);
 
-  // Bar chart of expenses by category
+  // Bar chart
   var expData=[];
   for(var i=0;i<EXP_CATS.length;i++){
     var v=st.byEC[EXP_CATS[i].id]||0;
     if(v>0) expData.push({cat:EXP_CATS[i],v:v});
   }
   expData.sort(function(a,b){return b.v-a.v;});
-
   if(expData.length){
     body.appendChild(secTitle("المصروفات حسب الفئة","4px"));
     var bc=el("div",{cls:"card card-p"});
@@ -1132,8 +1334,7 @@ function pageReport(){
       br.appendChild(el("div",{cls:"bar-row-lbl"},d.cat.em+" "+d.cat.lbl));
       var bt=el("div",{cls:"bar-track"});
       bt.appendChild(el("div",{cls:"bar-fill",sty:{width:pct+"%",background:d.cat.c}}));
-      br.appendChild(bt);
-      br.appendChild(el("div",{cls:"bar-val"},fmt(d.v)));
+      br.appendChild(bt);br.appendChild(el("div",{cls:"bar-val"},fmt(d.v)));
       barChart.appendChild(br);
     }
     bc.appendChild(barChart);body.appendChild(bc);
@@ -1143,9 +1344,10 @@ function pageReport(){
   body.appendChild(el("button",{cls:"btn",sty:{background:"var(--accent)",marginTop:"4px"},onclick:function(){
     var txt="📊 تقرير "+monthLbl(ym)+"\n═══════════════\n";
     txt+="💰 الدخل: "+fmt(st.inc)+" "+CUR+"\n";
-    txt+="💸 المصروفات: "+fmt(st.exp)+" "+CUR+"\n";
+    txt+="📋 الالتزامات: "+fmt(st.commitExp)+" "+CUR+"\n";
+    txt+="✅ المتاح: "+fmt(st.available)+" "+CUR+"\n";
+    txt+="💸 المصروفات: "+fmt(st.freeExp)+" "+CUR+"\n";
     txt+=(st.bal>=0?"✅":"⚠️")+" الرصيد: "+fmt(st.bal)+" "+CUR+"\n";
-    if(st.inc>0) txt+="📈 نسبة الإنفاق: "+Math.round((st.exp/st.inc)*100)+"%\n\n";
     for(var i=0;i<expData.length;i++) txt+="• "+expData[i].cat.em+" "+expData[i].cat.lbl+": "+fmt(expData[i].v)+" "+CUR+"\n";
     if(navigator.share) navigator.share({title:"تقرير الميزانية",text:txt}).catch(function(){});
     else if(navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){toast("✓ تم النسخ");});
@@ -1157,7 +1359,7 @@ function pageReport(){
 }
 
 // ════════════════════════════════════════════
-//  PAGE: MORE (settings)
+//  PAGE: MORE
 // ════════════════════════════════════════════
 function pageMore(){
   UI.tab="more";
@@ -1173,19 +1375,11 @@ function pageMore(){
   body.appendChild(secTitle("مظهر التطبيق"));
   var thCard=el("div",{cls:"card card-p"});
   var thRow=el("div",{sty:{display:"flex",gap:"10px"}});
-  var themes=[
-    {id:"blue", lbl:"ولد 👦", c1:"#5B9BD5",c2:"#1D6FA4"},
-    {id:"pink", lbl:"بنت 👧", c1:"#F4A7C3",c2:"#C2185B"},
-  ];
+  var themes=[{id:"blue",lbl:"ولد 👦",c1:"#5B9BD5",c2:"#1D6FA4"},{id:"pink",lbl:"بنت 👧",c1:"#F4A7C3",c2:"#C2185B"}];
   for(var i=0;i<themes.length;i++){
     (function(t){
       var active=S.theme===t.id;
-      var b=el("button",{sty:{
-        flex:"1",padding:"14px 8px",borderRadius:"14px",border:"2px solid",
-        borderColor:active?t.c2:"var(--border)",
-        background:active?"linear-gradient(135deg,"+t.c1+","+t.c2+")":"var(--surface2)",
-        cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px",fontFamily:"inherit"
-      },onclick:function(){S.theme=t.id;save();render();}});
+      var b=el("button",{sty:{flex:"1",padding:"14px 8px",borderRadius:"14px",border:"2px solid",borderColor:active?t.c2:"var(--border)",background:active?"linear-gradient(135deg,"+t.c1+","+t.c2+")":"var(--surface2)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px",fontFamily:"inherit"},onclick:function(){S.theme=t.id;save();render();}});
       b.appendChild(el("div",{sty:{width:"32px",height:"32px",borderRadius:"10px",background:"linear-gradient(135deg,"+t.c1+","+t.c2+")",border:active?"2px solid rgba(255,255,255,.4)":"none"}}));
       b.appendChild(el("div",{sty:{fontSize:"13px",fontWeight:"800",color:active?"#fff":"var(--text)"}},t.lbl));
       if(active) b.appendChild(el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.7)"}},"✓ محدد"));
@@ -1194,37 +1388,35 @@ function pageMore(){
   }
   thCard.appendChild(thRow);body.appendChild(thCard);
 
+  // Commitments shortcut
+  body.appendChild(secTitle("الالتزامات الثابتة","4px"));
+  var commCard=el("div",{cls:"card"});
+  var commBtn=el("button",{sty:{display:"flex",alignItems:"center",gap:"14px",padding:"16px 18px",width:"100%",background:"none",border:"none",cursor:"pointer"},onclick:function(){go("commitments");}});
+  commBtn.appendChild(el("div",{sty:{width:"44px",height:"44px",borderRadius:"12px",background:"var(--commit-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px"}},"📋"));
+  var ci=el("div",{sty:{flex:"1",textAlign:"right"}});
+  ci.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"800",color:"var(--text)"}},"إدارة الالتزامات"));
+  ci.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"1px"}},S.commits.length+" التزام  ·  "+fmt(totalCommits())+" "+CUR+"/شهر"));
+  commBtn.appendChild(ci);
+  commBtn.appendChild(el("span",{sty:{color:"var(--text3)",fontSize:"18px"}},"›"));
+  commCard.appendChild(commBtn);body.appendChild(commCard);
 
-
-  // Category management
+  // Categories
   body.appendChild(secTitle("فئات المصروفات","4px"));
   function renderCatList(cats,type){
     var card=el("div",{cls:"card",sty:{overflow:"hidden"}});
     for(var ci=0;ci<cats.length;ci++){
       (function(cat,idx){
-        var row=el("div",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",
-          borderBottom:idx<cats.length-1?"1px solid var(--border)":"none",cursor:"pointer"},
-          onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType=type;go("editCat");}});
-        row.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",
-          background:cat.c+"22",display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:"18px",flexShrink:"0"}},cat.em));
+        var row=el("div",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",borderBottom:idx<cats.length-1?"1px solid var(--border)":"none",cursor:"pointer"},onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType=type;go("editCat");}});
+        row.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:cat.c+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",flexShrink:"0"}},cat.em));
         row.appendChild(el("div",{sty:{flex:"1",fontSize:"14px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
         row.appendChild(el("span",{sty:{color:"var(--text3)",fontSize:"16px"}},"›"));
         card.appendChild(row);
       })(cats[ci],ci);
     }
-    // Add button at bottom
-    var addBtn=el("button",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",
-      width:"100%",background:"none",border:"none",cursor:"pointer",
-      borderTop:cats.length?"1px solid var(--border)":"none"},
-      onclick:function(){UI.editCat=null;UI.editCatType=type;go("editCat");}});
-    addBtn.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",
-      background:"var(--accent-bg)",display:"flex",alignItems:"center",justifyContent:"center",
-      fontSize:"20px",flexShrink:"0"}},"＋"));
-    addBtn.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"700",color:"var(--accent)"}},
-      type==="expense"?"إضافة فئة مصروف":"إضافة فئة دخل"));
-    card.appendChild(addBtn);
-    return card;
+    var addBtn=el("button",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",width:"100%",background:"none",border:"none",cursor:"pointer",borderTop:cats.length?"1px solid var(--border)":"none"},onclick:function(){UI.editCat=null;UI.editCatType=type;go("editCat");}});
+    addBtn.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:"var(--accent-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:"0"}},"＋"));
+    addBtn.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"700",color:"var(--accent)"}},type==="expense"?"إضافة فئة مصروف":"إضافة فئة دخل"));
+    card.appendChild(addBtn);return card;
   }
   body.appendChild(renderCatList(EXP_CATS,"expense"));
   body.appendChild(secTitle("فئات الدخل","4px"));
@@ -1296,81 +1488,51 @@ function handleXL(e){
   };
   r.readAsArrayBuffer(file);
 }
-
 function parsePivot(raw,hIdx){
-  // Find ALL header rows (rows where 2+ cells are month names)
-  // Each header row starts a new section
   var sections=[];
   for(var ri=hIdx;ri<raw.length;ri++){
-    var row=raw[ri];
-    var mCols=[];
+    var row=raw[ri];var mCols=[];
     for(var ci=0;ci<row.length;ci++){if(isMonthH(row[ci]))mCols.push({ci:ci,mi:monthIdx(row[ci]),h:String(row[ci]).trim()});}
-    if(mCols.length>=2){sections.push({hRowIdx:ri,mCols:mCols,rows:[]});}
+    if(mCols.length>=2)sections.push({hRowIdx:ri,mCols:mCols,rows:[]});
   }
   if(!sections.length)return{incRows:[],expRows:[],year:new Date().getFullYear()};
-
-  // For each section, collect data rows until next section header
   for(var si=0;si<sections.length;si++){
-    var sec=sections[si];
-    var nextHdr=si+1<sections.length?sections[si+1].hRowIdx:raw.length;
-    for(var ri=sec.hRowIdx+1;ri<nextHdr;ri++){
-      sec.rows.push(raw[ri]);
-    }
+    var sec=sections[si];var nextHdr=si+1<sections.length?sections[si+1].hRowIdx:raw.length;
+    for(var ri=sec.hRowIdx+1;ri<nextHdr;ri++)sec.rows.push(raw[ri]);
   }
-
-  // Find label column per section (first non-month col in header)
   for(var si=0;si<sections.length;si++){
-    var sec=sections[si];
-    var hRow=raw[sec.hRowIdx];
-    sec.labelCol=0;
-    for(var ci=0;ci<hRow.length;ci++){
-      var hv=String(hRow[ci]||"").trim().toLowerCase();
-      if(hv&&!isMonthH(hv)&&hv!=="bhd"&&hv!=="kwd"&&hv!=="د.ب"&&hv!=="-"){sec.labelCol=ci;break;}
-    }
+    var sec=sections[si];var hRow=raw[sec.hRowIdx];sec.labelCol=0;
+    for(var ci=0;ci<hRow.length;ci++){var hv=String(hRow[ci]||"").trim().toLowerCase();if(hv&&!isMonthH(hv)&&hv!=="bhd"&&hv!=="kwd"&&hv!=="د.ب"&&hv!=="-"){sec.labelCol=ci;break;}}
   }
-
-  // First section = income, second = expenses (most common layout)
-  // But also check for INCOME/EXPENSE keywords in section context
   var incRows=[],expRows=[];
   var year=new Date().getFullYear();
-
+  var rowTypeMap={};
+  for(var ri=0;ri<raw.length;ri++){
+    var rText="";for(var ci=0;ci<(raw[ri]||[]).length;ci++){var cv=String(raw[ri][ci]||"").trim().toUpperCase();rText+=cv+" ";}
+    rText=rText.trim();
+    if(rText==="INCOME"||rText.replace(/\s+/g,"")=="INCOME")rowTypeMap[ri]="income";
+    else if(rText==="EXPENSES"||rText.replace(/\s+/g,"")=="EXPENSES"||rText==="EXPENSE")rowTypeMap[ri]="expense";
+    else if(rText.includes("INCOME")&&rText.length<20)rowTypeMap[ri]="income";
+    else if(rText.includes("EXPENSE")&&rText.length<20)rowTypeMap[ri]="expense";
+    else if(rText.includes("دخل")&&rText.length<15)rowTypeMap[ri]="income";
+    else if(rText.includes("مصروف")&&rText.length<15)rowTypeMap[ri]="expense";
+  }
   function extractFromSection(sec,type){
-    var curLabel="";
-    var skipWords=["TOTAL","BALANCE","SUMMARY","ANNUAL","AVERAGE","المجموع","PERCENTAGE"];
+    var curLabel="";var skipWords=["TOTAL","BALANCE","SUMMARY","ANNUAL","AVERAGE","المجموع","PERCENTAGE"];
     for(var ri=0;ri<sec.rows.length;ri++){
-      var row=sec.rows[ri];
-      // Check if entire row is empty
-      var anyVal=false;
+      var row=sec.rows[ri];var anyVal=false;
       for(var ci=0;ci<row.length;ci++){if(String(row[ci]||"").trim())anyVal=true;}
       if(!anyVal)continue;
-
-      // Get first non-empty text for skip detection
-      var firstText="";
-      for(var ci=0;ci<row.length;ci++){var cv=String(row[ci]||"").trim();if(cv){firstText=cv.toUpperCase();break;}}
-      var skip=false;
-      for(var si2=0;si2<skipWords.length;si2++)if(firstText.startsWith(skipWords[si2])){skip=true;break;}
+      var firstText="";for(var ci=0;ci<row.length;ci++){var cv=String(row[ci]||"").trim();if(cv){firstText=cv.toUpperCase();break;}}
+      var skip=false;for(var si2=0;si2<skipWords.length;si2++)if(firstText.startsWith(skipWords[si2])){skip=true;break;}
       if(skip)continue;
-
-      // Get label from labelCol
-      var lbl=String(row[sec.labelCol]||"").trim();
-      var lblUp=lbl.toUpperCase();
+      var lbl=String(row[sec.labelCol]||"").trim();var lblUp=lbl.toUpperCase();
       if(lblUp==="BHD"||lblUp==="KWD"||lblUp==="-"||lblUp==="د.ب"||lbl.length<2){
-        // Search earlier columns
-        lbl="";
-        for(var ci=0;ci<sec.mCols[0].ci;ci++){
-          var cv2=String(row[ci]||"").trim();
-          var cv2up=cv2.toUpperCase();
-          if(cv2&&cv2up!=="BHD"&&cv2up!=="KWD"&&cv2up!=="-"&&cv2.length>=2){lbl=cv2;break;}
-        }
+        lbl="";for(var ci=0;ci<sec.mCols[0].ci;ci++){var cv2=String(row[ci]||"").trim();var cv2up=cv2.toUpperCase();if(cv2&&cv2up!=="BHD"&&cv2up!=="KWD"&&cv2up!=="-"&&cv2.length>=2){lbl=cv2;break;}}
       }
-      if(!lbl&&curLabel)lbl=curLabel;
-      if(!lbl)continue;
-      curLabel=lbl;
-
-      // Read month values
+      if(!lbl&&curLabel)lbl=curLabel;if(!lbl)continue;curLabel=lbl;
       for(var ci=0;ci<sec.mCols.length;ci++){
-        var mc=sec.mCols[ci];
-        var cellVal=String(row[mc.ci]||"").trim().replace(/BHD/gi,"").replace(/KWD/gi,"").replace(/,/g,"").trim();
+        var mc=sec.mCols[ci];var cellVal=String(row[mc.ci]||"").trim().replace(/BHD/gi,"").replace(/KWD/gi,"").replace(/,/g,"").trim();
         var val=parseFloat(cellVal.replace(/[^0-9.]/g,""))||0;
         if(val<=0)continue;
         if(type==="income")incRows.push({label:lbl,amount:val,month:mc.mi});
@@ -1378,75 +1540,31 @@ function parsePivot(raw,hIdx){
       }
     }
   }
-
-  // Determine which section is income vs expense
-  // Strategy: scan ALL rows of the sheet for INCOME/EXPENSES keywords
-  // Build a map: rowIndex -> type
-  var rowTypeMap={};
-  for(var ri=0;ri<raw.length;ri++){
-    var rText="";
-    for(var ci=0;ci<(raw[ri]||[]).length;ci++){
-      var cv=String(raw[ri][ci]||"").trim().toUpperCase();
-      rText+=cv+" ";
-    }
-    rText=rText.trim();
-    // Exact or near-exact match for section headers
-    if(rText==="INCOME"||rText.replace(/\s+/g,"")=="INCOME"){rowTypeMap[ri]="income";}
-    else if(rText==="EXPENSES"||rText.replace(/\s+/g,"")=="EXPENSES"||rText==="EXPENSE"){rowTypeMap[ri]="expense";}
-    else if(rText.includes("INCOME")&&rText.length<20){rowTypeMap[ri]="income";}
-    else if(rText.includes("EXPENSE")&&rText.length<20){rowTypeMap[ri]="expense";}
-    else if(rText.includes("دخل")&&rText.length<15){rowTypeMap[ri]="income";}
-    else if(rText.includes("مصروف")&&rText.length<15){rowTypeMap[ri]="expense";}
-  }
-
-  // For each section header row, find the closest type label above it
   for(var si=0;si<sections.length;si++){
-    var sec=sections[si];
-    var type="";
-    // Look up to 5 rows above the month-header row
-    for(var ri=sec.hRowIdx-1;ri>=Math.max(0,sec.hRowIdx-5);ri--){
-      if(rowTypeMap[ri]){type=rowTypeMap[ri];break;}
-    }
-    // Fallback: first section = income, second = expense
+    var sec=sections[si];var type="";
+    for(var ri=sec.hRowIdx-1;ri>=Math.max(0,sec.hRowIdx-5);ri--){if(rowTypeMap[ri]){type=rowTypeMap[ri];break;}}
     if(!type){type=si===0?"income":"expense";}
-    sec.type=type;
-    extractFromSection(sec,type);
+    sec.type=type;extractFromSection(sec,type);
   }
-
   return{incRows:incRows,expRows:expRows,year:year};
 }
-
 function pageConfirmXL(){
   var pd=UI.pivotData;if(!pd){go("more");return el("div");}
   var iT=0,eT=0;for(var i=0;i<pd.incRows.length;i++)iT+=pd.incRows[i].amount;for(var i=0;i<pd.expRows.length;i++)eT+=pd.expRows[i].amount;
   var expByCat={};for(var i=0;i<pd.expRows.length;i++){var l=pd.expRows[i].label;expByCat[l]=(expByCat[l]||0)+pd.expRows[i].amount;}
   var incByCat={};for(var i=0;i<pd.incRows.length;i++){var l=pd.incRows[i].label;incByCat[l]=(incByCat[l]||0)+pd.incRows[i].amount;}
-
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"80px",background:"var(--bg)",overflowY:"auto"}});
   var hdr=el("div",{cls:"hdr"});
   hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px",marginBottom:"14px"}},[
     el("button",{cls:"back-btn",onclick:function(){go("more");}},["←"]),
     el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},"تأكيد استيراد Excel")
   ]));
-  hdr.appendChild(el("div",{sty:{fontSize:"13px",color:"rgba(255,255,255,.7)"}},(pd.incRows.length+pd.expRows.length)+" معاملة · "+pd.incRows.length+" دخل · "+pd.expRows.length+" مصروف"));
-  var sr=el("div",{sty:{display:"flex",gap:"8px",marginTop:"14px"}});
-  var sdata=[{l:"الدخل",v:iT,c:"#6EE7B7"},{l:"المصروفات",v:eT,c:"#FCA5A5"},{l:"الرصيد",v:iT-eT,c:(iT-eT)>=0?"#6EE7B7":"#FCA5A5"}];
-  for(var i=0;i<sdata.length;i++){
-    var s=sdata[i];
-    var sc=el("div",{sty:{flex:"1",background:"rgba(255,255,255,.12)",borderRadius:"12px",padding:"10px"}});
-    sc.appendChild(el("div",{sty:{fontSize:"10px",color:"rgba(255,255,255,.6)",fontWeight:"700",marginBottom:"2px"}},s.l));
-    sc.appendChild(el("div",{sty:{fontSize:"15px",fontWeight:"900",color:s.c}},fmt(Math.abs(s.v))));
-    sr.appendChild(sc);
-  }
-  hdr.appendChild(sr);
+  hdr.appendChild(el("div",{sty:{fontSize:"13px",color:"rgba(255,255,255,.7)"}},(pd.incRows.length+pd.expRows.length)+" معاملة"));
   page.appendChild(hdr);
-
   var body=el("div",{cls:"content",sty:{paddingBottom:"80px"}});
   body.appendChild(secTitle("سنة البيانات"));
   var yr=inpEl({type:"number",value:String(pd.year),placeholder:"2025",sty:{fontSize:"20px",fontWeight:"900"}});
   body.appendChild(yr);
-
-  // Income preview
   var incKeys=Object.keys(incByCat);
   if(incKeys.length){
     body.appendChild(secTitle("الدخل","8px"));
@@ -1461,8 +1579,6 @@ function pageConfirmXL(){
     }
     body.appendChild(ic);
   }
-
-  // Expense preview
   var expKeys=Object.keys(expByCat);
   if(expKeys.length){
     body.appendChild(secTitle("المصروفات","8px"));
@@ -1477,38 +1593,10 @@ function pageConfirmXL(){
     }
     body.appendChild(ec);
   }
-
   body.appendChild(el("button",{cls:"btn",sty:{background:"var(--income)",marginTop:"8px"},onclick:function(){
-    var year=parseInt(yr.value)||pd.year;
-    var ts=Date.now();var newTx=[];
-    function mapExpCat(lbl){
-      var l=lbl.toLowerCase();
-      if(l.includes("grocer")||l.includes("بقالة"))return "groceries";
-      if(l.includes("food")||l.includes("طعام"))return "food";
-      if(l.includes("debt")||l.includes("loan")||l.includes("دين"))return "debt";
-      if(l.includes("child")||l.includes("أطفال"))return "children";
-      if(l.includes("fuel")||l.includes("وقود")||l.includes("petrol"))return "fuel";
-      if(l.includes("car ")&&!l.includes("fuel"))return "car";
-      if(l.includes("health")||l.includes("صحة")||l.includes("medical"))return "health";
-      if(l.includes("home")||l.includes("بيت")||l.includes("house")||l.includes("rent"))return "home";
-      if(l.includes("electric")||l.includes("كهرباء"))return "electricity";
-      if(l.includes("mobile")||l.includes("phone")||l.includes("موبايل"))return "mobile";
-      if(l.includes("shop")||l.includes("مشتريات"))return "shopping";
-      if(l.includes("entertain")||l.includes("ترفيه"))return "entertain";
-      if(l.includes("tech")||l.includes("تقنية"))return "tech";
-      if(l.includes("travel")||l.includes("سفر"))return "travel";
-      if(l.includes("utilit")||l.includes("خدمات"))return "utilities";
-      if(l.includes("maid")||l.includes("house made")||l.includes("عمالة"))return "housemaid";
-      if(l.includes("wife")||l.includes("زوجة"))return "wife";
-      return "other";
-    }
-    function mapIncCat(lbl){
-      var l=lbl.toLowerCase();
-      if(l.includes("salary")||l.includes("راتب"))return "salary";
-      if(l.includes("shop")||l.includes("متجر"))return "shop";
-      if(l.includes("income")||l.includes("دخل"))return "income2";
-      return "other";
-    }
+    var year=parseInt(yr.value)||pd.year;var ts=Date.now();var newTx=[];
+    function mapExpCat(lbl){var l=lbl.toLowerCase();if(l.includes("grocer")||l.includes("بقالة"))return "groceries";if(l.includes("food")||l.includes("طعام"))return "food";if(l.includes("debt")||l.includes("loan")||l.includes("دين"))return "debt";if(l.includes("child")||l.includes("أطفال"))return "children";if(l.includes("fuel")||l.includes("وقود")||l.includes("petrol"))return "fuel";if(l.includes("car ")&&!l.includes("fuel"))return "car";if(l.includes("health")||l.includes("صحة")||l.includes("medical"))return "health";if(l.includes("home")||l.includes("بيت")||l.includes("house")||l.includes("rent"))return "home";if(l.includes("electric")||l.includes("كهرباء"))return "electricity";if(l.includes("mobile")||l.includes("phone")||l.includes("موبايل"))return "mobile";if(l.includes("shop")||l.includes("مشتريات"))return "shopping";if(l.includes("entertain")||l.includes("ترفيه"))return "entertain";if(l.includes("travel")||l.includes("سفر"))return "travel";return "other";}
+    function mapIncCat(lbl){var l=lbl.toLowerCase();if(l.includes("salary")||l.includes("راتب"))return "salary";if(l.includes("shop")||l.includes("متجر"))return "shop";if(l.includes("income")||l.includes("دخل"))return "income2";return "other";}
     for(var i=0;i<pd.incRows.length;i++){var t=pd.incRows[i];newTx.push({id:"xl_i_"+ts+"_"+i,type:"income",catId:mapIncCat(t.label),label:t.label,amount:t.amount,date:year+"-"+String(t.month).padStart(2,"0")+"-01",note:""});}
     for(var i=0;i<pd.expRows.length;i++){var t=pd.expRows[i];newTx.push({id:"xl_e_"+ts+"_"+i,type:"expense",catId:mapExpCat(t.label),label:t.label,amount:t.amount,date:year+"-"+String(t.month).padStart(2,"0")+"-01",note:""});}
     for(var i=0;i<newTx.length;i++)S.txs.push(newTx[i]);
@@ -1522,7 +1610,7 @@ function pageConfirmXL(){
 //  BACKUP
 // ════════════════════════════════════════════
 function exportAll(){
-  var data=JSON.stringify({_t:"mb2",v:2,d:today(),txs:S.txs},null,2);
+  var data=JSON.stringify({_t:"mb2",v:2,d:today(),txs:S.txs,commits:S.commits},null,2);
   var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download="ميزانية-البيت-"+today()+".json";a.click();toast("✓ تم التصدير");
 }
 function importJSON(e){
@@ -1531,125 +1619,81 @@ function importJSON(e){
   r.onload=function(ev){
     try{
       var d=JSON.parse(ev.target.result);
-      if(d._t==="mb2"){if(confirm("سيستبدل كل البيانات. متأكد؟")){S.txs=d.txs||[];save();toast("✓ تم الاستيراد");go("home");}}
+      if(d._t==="mb2"){if(confirm("سيستبدل كل البيانات. متأكد؟")){S.txs=d.txs||[];S.commits=d.commits||[];save();toast("✓ تم الاستيراد");go("home");}}
       else toast("الملف غير صحيح");
     }catch(err){toast("خطأ في الملف");}
   };
   r.readAsText(file);e.target.value="";
 }
 
-
 // ════════════════════════════════════════════
 //  PAGE: ADD/EDIT CATEGORY
 // ════════════════════════════════════════════
 var CAT_COLORS=["#0EA370","#F97316","#E5484D","#EC4899","#6366F1","#8B5CF6","#14B8A6","#3B82F6","#EAB308","#06B6D4","#A855F7","#F43F5E","#0EA5E9","#D97706","#84CC16","#64748B","#78716C","#9CA3AF"];
 var CAT_EMOJIS=["🛒","🍽️","💳","👶","🚗","⛽","🏥","🏠","💡","📱","🛍️","🎮","✈️","💰","💼","🏪","📥","📦","🧹","🔧","🎓","🏋️","💊","🎁","📚","☕","🎵","🍕","🧴","🐾","💈","🌿"];
-
 function pageEditCat(){
   var isEdit=!!UI.editCat;
   var type=UI.editCatType;
   var f=isEdit?UI.editCat:{id:"",lbl:"",em:"😊",c:CAT_COLORS[0]};
-  var curColor=f.c||CAT_COLORS[0];
-  var curEmoji=f.em||"😊";
-
+  var curColor=f.c||CAT_COLORS[0];var curEmoji=f.em||"😊";
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
-  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[
-    el("button",{cls:"back-btn",onclick:function(){go("more");}},["←"]),
-    el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الفئة":"فئة جديدة")
-  ]));
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[backBtn("more"),el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الفئة":"فئة جديدة")]));
   page.appendChild(hdr);
-
   var body=el("div",{cls:"content"});
-
-  // Preview
-  var preview=el("div",{cls:"card card-p",sty:{display:"flex",alignItems:"center",gap:"14px",marginBottom:"0"}});
+  var preview=el("div",{cls:"card card-p",sty:{display:"flex",alignItems:"center",gap:"14px"}});
   var previewIcon=el("div",{sty:{width:"48px",height:"48px",borderRadius:"14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",background:curColor+"22",flexShrink:"0"}},curEmoji);
   var previewLbl=el("div",{sty:{flex:"1",fontSize:"16px",fontWeight:"800",color:"var(--text)"}},f.lbl||"اسم الفئة");
-  preview.appendChild(previewIcon);preview.appendChild(previewLbl);
-  body.appendChild(preview);
-
-  // Name
+  preview.appendChild(previewIcon);preview.appendChild(previewLbl);body.appendChild(preview);
   body.appendChild(secTitle("اسم الفئة","4px"));
   var ni=inpEl({value:f.lbl||"",placeholder:"مثال: تأمين، رياضة، قهوة..."});
   ni.addEventListener("input",function(){previewLbl.textContent=ni.value||"اسم الفئة";});
   body.appendChild(ni);
-
-  // Emoji picker
   body.appendChild(secTitle("الأيقونة","4px"));
   var emojiWrap=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
-  function setEmoji(em){
-    curEmoji=em;previewIcon.textContent=em;
-    var btns=emojiWrap.querySelectorAll("button");
-    for(var i=0;i<btns.length;i++){btns[i].style.borderColor="var(--border)";btns[i].style.background="var(--surface2)";}
-  }
+  function setEmoji(em){curEmoji=em;previewIcon.textContent=em;var btns=emojiWrap.querySelectorAll("button");for(var i=0;i<btns.length;i++){btns[i].style.borderColor="var(--border)";btns[i].style.background="var(--surface2)";}}
   for(var i=0;i<CAT_EMOJIS.length;i++){
     (function(em){
-      var b=el("button",{sty:{width:"42px",height:"42px",borderRadius:"10px",border:"2px solid",
-        borderColor:curEmoji===em?"var(--accent)":"var(--border)",
-        background:curEmoji===em?"var(--accent-bg)":"var(--surface2)",
-        fontSize:"20px",cursor:"pointer"},
-        onclick:function(){setEmoji(em);}},em);
+      var b=el("button",{sty:{width:"42px",height:"42px",borderRadius:"10px",border:"2px solid",borderColor:curEmoji===em?"var(--accent)":"var(--border)",background:curEmoji===em?"var(--accent-bg)":"var(--surface2)",fontSize:"20px",cursor:"pointer"},onclick:function(){setEmoji(em);}},em);
       emojiWrap.appendChild(b);
     })(CAT_EMOJIS[i]);
   }
-  // Custom emoji input
   var customEm=inpEl({value:"",placeholder:"أو اكتب أيقونة...",maxlength:"2",sty:{width:"120px",textAlign:"center",fontSize:"20px"}});
   customEm.addEventListener("input",function(){if(customEm.value.trim())setEmoji(customEm.value.trim());});
-  emojiWrap.appendChild(customEm);
-  body.appendChild(emojiWrap);
-
-  // Color picker
+  emojiWrap.appendChild(customEm);body.appendChild(emojiWrap);
   body.appendChild(secTitle("اللون","4px"));
   var colorWrap=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
-  function setColor(c){
-    curColor=c;previewIcon.style.background=c+"22";
-    var btns=colorWrap.querySelectorAll("button");
-    for(var i=0;i<btns.length;i++){btns[i].style.border="3px solid transparent";}
-  }
+  function setColor(c){curColor=c;previewIcon.style.background=c+"22";var btns=colorWrap.querySelectorAll("button");for(var i=0;i<btns.length;i++)btns[i].style.border="3px solid transparent";}
   for(var i=0;i<CAT_COLORS.length;i++){
     (function(c){
-      var b=el("button",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:c,
-        border:curColor===c?"3px solid var(--text)":"3px solid transparent",cursor:"pointer"},
-        onclick:function(){setColor(c);}});
+      var b=el("button",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:c,border:curColor===c?"3px solid var(--text)":"3px solid transparent",cursor:"pointer"},onclick:function(){setColor(c);}});
       colorWrap.appendChild(b);
     })(CAT_COLORS[i]);
   }
   body.appendChild(colorWrap);
-
-  // Save
   var saveFn=function(){
     var name=ni.value.trim();if(!name){toast("أدخل اسم الفئة");return;}
     var cats=type==="income"?INC_CATS:EXP_CATS;
-    if(isEdit){
-      for(var i=0;i<cats.length;i++){
-        if(cats[i].id===f.id){cats[i]=Object.assign({},cats[i],{lbl:name,em:curEmoji,c:curColor});break;}
-      }
-    } else {
-      var newId="cat_"+Date.now();
-      cats.push({id:newId,lbl:name,em:curEmoji,c:curColor});
-    }
-    if(type==="income"){INC_CATS=cats;S.incCats=cats;}
-    else{EXP_CATS=cats;S.expCats=cats;}
+    if(isEdit){for(var i=0;i<cats.length;i++){if(cats[i].id===f.id){cats[i]=Object.assign({},cats[i],{lbl:name,em:curEmoji,c:curColor});break;}}}
+    else{cats.push({id:"cat_"+Date.now(),lbl:name,em:curEmoji,c:curColor});}
+    if(type==="income"){INC_CATS=cats;S.incCats=cats;}else{EXP_CATS=cats;S.expCats=cats;}
     save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go("more");
   };
-
   var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"8px"}});
   btnRow.appendChild(el("button",{cls:"btn btn-accent",onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
   if(isEdit){
     var fid=f.id;
     btnRow.appendChild(el("button",{cls:"btn btn-danger",sty:{width:"auto",padding:"14px 18px"},onclick:function(){
       modal("حذف الفئة؟",f.lbl,false,function(){
-        var cats=type==="income"?INC_CATS:EXP_CATS;
-        var nc=[];for(var i=0;i<cats.length;i++)if(cats[i].id!==fid)nc.push(cats[i]);
+        var cats=type==="income"?INC_CATS:EXP_CATS;var nc=[];for(var i=0;i<cats.length;i++)if(cats[i].id!==fid)nc.push(cats[i]);
         if(type==="income"){INC_CATS=nc;S.incCats=nc;}else{EXP_CATS=nc;S.expCats=nc;}
         save();toast("تم الحذف");go("more");
       });
     }},"🗑️"));
   }
-  body.appendChild(btnRow);
-  page.appendChild(body);return page;
+  body.appendChild(btnRow);page.appendChild(body);return page;
 }
+
 // ════════════════════════════════════════════
 //  RENDER
 // ════════════════════════════════════════════
@@ -1659,20 +1703,22 @@ function render(){
   root.innerHTML="";
   if(!S.onboarded){root.appendChild(pageOnboard());return;}
   var pages={
-    home:pageHome,
-    incList:function(){return pageTxList("income");},
-    expList:function(){return pageTxList("expense");},
-    addInc:function(){UI.editTx=null;return pageAETx("income");},
-    addExp:function(){UI.editTx=null;return pageAETx("expense");},
-    editTx:function(){return pageAETx(UI.editTx?UI.editTx.type:"expense");},
-    report:pageReport,
-    more:pageMore,
-    confirmXL:pageConfirmXL,
-    editCat:pageEditCat,
+    home:       pageHome,
+    incList:    function(){return pageTxList("income");},
+    expList:    function(){return pageTxList("expense");},
+    addInc:     function(){UI.editTx=null;return pageAETx("income");},
+    addExp:     function(){UI.editTx=null;return pageAETx("expense");},
+    editTx:     function(){return pageAETx(UI.editTx?UI.editTx.type:"expense");},
+    report:     pageReport,
+    more:       pageMore,
+    confirmXL:  pageConfirmXL,
+    editCat:    pageEditCat,
+    commitments:pageCommits,
+    editCommit: pageAECommit,
   };
   var fn=pages[UI.view];
   if(fn)root.appendChild(fn());
-  else{root.appendChild(pageHome());}
+  else root.appendChild(pageHome());
 }
 
 if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",render);}
