@@ -57,7 +57,7 @@ input { -webkit-appearance:none; }
 input[type="date"] { -webkit-appearance:none; }
 
 .page { min-height:100vh; padding-bottom:80px; }
-.content { padding:16px; display:flex; flex-direction:column; gap:12px; }
+.content { padding:16px; display:flex; flex-direction:column; gap:12px; row-gap:12px; }
 .card { background:var(--surface); border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden; }
 .card-p { padding:16px 18px; }
 
@@ -78,12 +78,12 @@ input[type="date"] { -webkit-appearance:none; }
   backdrop-filter:blur(8px);
   -webkit-backdrop-filter:blur(8px);
 }
-.balance-main { display:flex; justify-content:center; align-items:baseline; gap:6px; margin-bottom:4px; }
+.balance-main { display:flex; justify-content:center; align-items:baseline; margin-bottom:4px; } .balance-main > * + * { margin-right:6px; }
 .balance-num { font-size:36px; font-weight:900; color:#fff; letter-spacing:-1px; }
 .balance-cur { font-size:13px; font-weight:600; color:rgba(255,255,255,.6); }
 .balance-label { font-size:11px; color:rgba(255,255,255,.55); font-weight:600; letter-spacing:.5px; text-align:center; margin-bottom:14px; }
 .balance-scale { display:grid; grid-template-columns:1fr 4px 1fr; gap:0; align-items:center; }
-.scale-side { display:flex; flex-direction:column; gap:2px; }
+.scale-side { display:flex; flex-direction:column; }  .scale-side > * + * { margin-top:2px; }
 .scale-side.right { text-align:right; }
 .scale-side.left  { text-align:left; }
 .scale-lbl { font-size:10px; color:rgba(255,255,255,.55); font-weight:700; }
@@ -110,7 +110,7 @@ input[type="date"] { -webkit-appearance:none; }
 .ib-lbl { font-size:10px; color:rgba(255,255,255,.55); font-weight:700; margin-bottom:2px; }
 .ib-val { font-size:14px; font-weight:900; }
 
-.month-scroll { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+.month-scroll { display:flex; overflow-x:auto; padding-bottom:2px; } .month-scroll > * + * { margin-right:6px; }
 .month-scroll::-webkit-scrollbar { height:0; }
 .mtab {
   flex-shrink:0; padding:6px 14px; border-radius:20px;
@@ -142,7 +142,7 @@ input[type="date"] { -webkit-appearance:none; }
 .prog { background:var(--surface2); border-radius:99px; height:5px; overflow:hidden; margin-top:7px; }
 .prog-fill { height:100%; border-radius:99px; transition:width .5s cubic-bezier(.4,0,.2,1); }
 
-.tx-row { display:flex; align-items:center; gap:12px; padding:12px 16px; }
+.tx-row { display:flex; align-items:center; padding:12px 16px; } .tx-row > * + * { margin-right:12px; }
 .tx-row + .tx-row { border-top:1px solid var(--border); }
 .tx-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
 .tx-info { flex:1; min-width:0; }
@@ -150,7 +150,7 @@ input[type="date"] { -webkit-appearance:none; }
 .tx-sub  { font-size:11px; color:var(--text3); margin-top:1px; }
 .tx-amt  { font-size:15px; font-weight:900; flex-shrink:0; }
 
-.cat-grid { display:flex; flex-wrap:wrap; gap:7px; }
+.cat-grid { display:flex; flex-wrap:wrap; margin:-3px; } .cat-chip { margin:3px; }
 .cat-chip {
   display:flex; align-items:center; gap:6px;
   padding:8px 12px; border-radius:22px;
@@ -180,14 +180,14 @@ select.inp { cursor:pointer; }
 .btn-accent  { background:var(--theme-accent) !important; }
 .btn-commit  { background:var(--commit) !important; }
 
-.chart-wrap { display:flex; align-items:center; gap:16px; padding:16px 18px; }
+.chart-wrap { display:flex; align-items:center; padding:16px 18px; } .chart-wrap > * + * { margin-right:16px; }
 .donut-wrap { position:relative; width:110px; height:110px; flex-shrink:0; }
 .donut-wrap svg { transform:rotate(-90deg); }
 .donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .donut-center-val { font-size:16px; font-weight:900; color:var(--text); }
 .donut-center-lbl { font-size:9px; color:var(--text3); font-weight:700; }
-.chart-legend { flex:1; display:flex; flex-direction:column; gap:7px; }
-.legend-row { display:flex; align-items:center; gap:8px; }
+.chart-legend { flex:1; display:flex; flex-direction:column; } .chart-legend > * + * { margin-top:7px; }
+.legend-row { display:flex; align-items:center; } .legend-row > * + * { margin-right:8px; }
 .legend-dot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
 .legend-lbl { flex:1; font-size:12px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .legend-val { font-size:12px; font-weight:800; color:var(--text2); }
@@ -258,13 +258,13 @@ tr:last-child td { border-bottom:none; }
 .ob-emoji { font-size:72px; margin-bottom:24px; }
 .ob-title { font-size:24px; font-weight:900; color:var(--text); margin-bottom:10px; line-height:1.3; }
 .ob-body  { font-size:15px; color:var(--text3); line-height:1.8; margin-bottom:36px; }
-.ob-dots  { display:flex; justify-content:center; gap:8px; margin-bottom:36px; }
+.ob-dots  { display:flex; justify-content:center; margin-bottom:36px; } .ob-dot + .ob-dot { margin-right:8px; }
 .ob-dot   { height:7px; border-radius:99px; background:var(--border); transition:all .3s; }
 .ob-dot.active { background:var(--theme-accent); width:24px; }
 .ob-dot:not(.active) { width:7px; }
 
-.bar-chart { display:flex; flex-direction:column; gap:10px; }
-.bar-row { display:flex; align-items:center; gap:10px; }
+.bar-chart { display:flex; flex-direction:column; } .bar-row + .bar-row { margin-top:10px; }
+.bar-row { display:flex; align-items:center; } .bar-row > * + * { margin-right:10px; }
 .bar-row-lbl { width:80px; font-size:12px; font-weight:700; color:var(--text2); text-align:right; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .bar-track { flex:1; background:var(--surface2); border-radius:99px; height:8px; overflow:hidden; }
 .bar-fill  { height:100%; border-radius:99px; transition:width .5s; }
@@ -299,6 +299,15 @@ tr:last-child td { border-bottom:none; }
 .commit-banner-title { font-size:14px; font-weight:900; color:#fff; margin-bottom:2px; }
 .commit-banner-sub   { font-size:12px; color:rgba(255,255,255,.7); }
 .commit-banner-arrow { font-size:18px; color:rgba(255,255,255,.7); }
+
+/* iOS flex gap compatibility */
+.flex-gap-8  > * + * { margin-right:8px; }
+.flex-gap-10 > * + * { margin-right:10px; }
+.flex-gap-12 > * + * { margin-right:12px; }
+.flex-gap-14 > * + * { margin-right:14px; }
+.flex-col-gap-8  > * + * { margin-top:8px; }
+.flex-col-gap-10 > * + * { margin-top:10px; }
+.flex-col-gap-12 > * + * { margin-top:12px; }
 </style>
 </head>
 <body>
@@ -312,8 +321,8 @@ tr:last-child td { border-bottom:none; }
     <div id="modal-title" style="font-size:17px;font-weight:900;margin-bottom:6px;color:var(--text)"></div>
     <div id="modal-body"  style="font-size:13px;color:var(--text2);margin-bottom:16px"></div>
     <div id="modal-warn" style="display:none;font-size:12px;color:var(--expense);margin-bottom:12px">سيتم حذف كل ما بداخله</div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-danger" id="modal-confirm">حذف</button>
+    <div style="display:flex;">
+      <button class="btn btn-danger" id="modal-confirm" style="margin-left:10px;">حذف</button>
       <button class="btn btn-ghost"  id="modal-cancel">إلغاء</button>
     </div>
   </div>
@@ -326,7 +335,7 @@ tr:last-child td { border-bottom:none; }
     <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">📋 الالتزامات الشهرية</div>
     <div id="commit-subtitle" style="font-size:13px;color:var(--text2);margin-bottom:16px;"></div>
     <div id="commit-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
-    <div style="display:flex;gap:10px;">
+    <div style="display:flex;">
       <button class="btn btn-commit" id="commit-apply-btn">✅ تطبيق الكل</button>
       <button class="btn btn-ghost" id="commit-skip-btn">تخطي</button>
     </div>
@@ -736,7 +745,7 @@ function pageHome(){
   bc.appendChild(el("div",{cls:"balance-label"},bal>=0?"↑ الرصيد هذا الشهر":"↓ عجز هذا الشهر"));
 
   // 4-col grid: income | commits | free spending | balance
-  var grid=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",alignItems:"center",gap:"0"}});
+  var grid=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",alignItems:"center"}});
   function scol(lbl,val,valCls){
     var d=el("div",{cls:"scale-side",sty:{textAlign:"center",padding:"0 6px"}});
     d.appendChild(el("div",{cls:"scale-lbl"},lbl));
@@ -886,7 +895,7 @@ function pageTxList(type){
 
   // Summary row for expense page
   if(type==="expense"&&st.commitExp>0){
-    var sr=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}});
+    var sr=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr"}});
     var sdata=[
       {l:"الإجمالي",v:st.exp,c:"var(--expense)"},
       {l:"التزامات",v:st.commitExp,c:"var(--commit)"},
@@ -981,7 +990,7 @@ function pageAETx(type){
 
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
-  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center"}},[
     el("button",{cls:"back-btn",onclick:function(){go(type==="income"?"incList":"expList");}},["←"]),
     el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل المعاملة":(type==="income"?"إضافة دخل":"إضافة مصروف"))
   ]));
@@ -1039,7 +1048,7 @@ function pageAETx(type){
     save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go(type==="income"?"incList":"expList");
   };
 
-  var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"4px"}});
+  var btnRow=el("div",{sty:{display:"flex",marginTop:"4px"}});
   btnRow.appendChild(el("button",{cls:"btn",sty:{background:type==="income"?"var(--income)":"var(--expense)"},onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
   if(isEdit){
     var fid=f.id;
@@ -1060,7 +1069,7 @@ function pageAETx(type){
 function pageCommits(){
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"100px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
-  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px",marginBottom:"8px"}},[
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",marginBottom:"8px"}},[
     backBtn("more"),
     el("div",{sty:{flex:"1",fontSize:"20px",fontWeight:"900",color:"#fff"}},"الالتزامات الثابتة")
   ]));
@@ -1087,7 +1096,7 @@ function pageCommits(){
       (function(c,idx){
         var cat=getCat("expense",c.catId);
         var applied=c.appliedMonths&&c.appliedMonths.indexOf(m)>=0;
-        var row=el("div",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"14px 16px",
+        var row=el("div",{sty:{display:"flex",alignItems:"center",padding:"14px 16px",
           borderBottom:idx<S.commits.length-1?"1px solid var(--border)":"none",
           borderRight:"3px solid "+cat.c,cursor:"pointer"},
           onclick:function(){UI.editCommit=Object.assign({},c);go("editCommit");}});
@@ -1136,7 +1145,7 @@ function pageAECommit(){
 
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"80px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
-  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center"}},[
     backBtn("commitments"),
     el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الالتزام":"التزام جديد")
   ]));
@@ -1146,7 +1155,7 @@ function pageAECommit(){
 
   // Emoji picker
   body.appendChild(secTitle("الأيقونة"));
-  var epick=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
+  var epick=el("div",{sty:{display:"flex",flexWrap:"wrap"}});
   var selEmojiBtns=[];
   for(var i=0;i<COMMIT_EMOJIS.length;i++){
     (function(em,idx){
@@ -1209,7 +1218,7 @@ function pageAECommit(){
     save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go("commitments");
   };
 
-  var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"4px"}});
+  var btnRow=el("div",{sty:{display:"flex",marginTop:"4px"}});
   btnRow.appendChild(el("button",{cls:"btn btn-commit",onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
   if(isEdit){
     var fid=f.id;
@@ -1299,7 +1308,7 @@ function pageReport(){
   body.appendChild(secTitle("تفاصيل "+monthLbl(ym),"4px"));
 
   // 4-stat row for selected month
-  var ms4=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px"}});
+  var ms4=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1fr"}});
   var ms4data=[
     {l:"الدخل",v:st.inc,c:"var(--income)"},
     {l:"المتاح للإنفاق",v:st.available,c:"var(--accent)"},
@@ -1374,12 +1383,12 @@ function pageMore(){
   // Theme
   body.appendChild(secTitle("مظهر التطبيق"));
   var thCard=el("div",{cls:"card card-p"});
-  var thRow=el("div",{sty:{display:"flex",gap:"10px"}});
+  var thRow=el("div",{sty:{display:"flex"}});
   var themes=[{id:"blue",lbl:"ولد 👦",c1:"#5B9BD5",c2:"#1D6FA4"},{id:"pink",lbl:"بنت 👧",c1:"#F4A7C3",c2:"#C2185B"}];
   for(var i=0;i<themes.length;i++){
     (function(t){
       var active=S.theme===t.id;
-      var b=el("button",{sty:{flex:"1",padding:"14px 8px",borderRadius:"14px",border:"2px solid",borderColor:active?t.c2:"var(--border)",background:active?"linear-gradient(135deg,"+t.c1+","+t.c2+")":"var(--surface2)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"6px",fontFamily:"inherit"},onclick:function(){S.theme=t.id;save();render();}});
+      var b=el("button",{sty:{flex:"1",padding:"14px 8px",borderRadius:"14px",border:"2px solid",borderColor:active?t.c2:"var(--border)",background:active?"linear-gradient(135deg,"+t.c1+","+t.c2+")":"var(--surface2)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",fontFamily:"inherit"},onclick:function(){S.theme=t.id;save();render();}});
       b.appendChild(el("div",{sty:{width:"32px",height:"32px",borderRadius:"10px",background:"linear-gradient(135deg,"+t.c1+","+t.c2+")",border:active?"2px solid rgba(255,255,255,.4)":"none"}}));
       b.appendChild(el("div",{sty:{fontSize:"13px",fontWeight:"800",color:active?"#fff":"var(--text)"}},t.lbl));
       if(active) b.appendChild(el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.7)"}},"✓ محدد"));
@@ -1391,7 +1400,7 @@ function pageMore(){
   // Commitments shortcut
   body.appendChild(secTitle("الالتزامات الثابتة","4px"));
   var commCard=el("div",{cls:"card"});
-  var commBtn=el("button",{sty:{display:"flex",alignItems:"center",gap:"14px",padding:"16px 18px",width:"100%",background:"none",border:"none",cursor:"pointer"},onclick:function(){go("commitments");}});
+  var commBtn=el("button",{sty:{display:"flex",alignItems:"center",padding:"16px 18px",width:"100%",background:"none",border:"none",cursor:"pointer"},onclick:function(){go("commitments");}});
   commBtn.appendChild(el("div",{sty:{width:"44px",height:"44px",borderRadius:"12px",background:"var(--commit-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"22px"}},"📋"));
   var ci=el("div",{sty:{flex:"1",textAlign:"right"}});
   ci.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"800",color:"var(--text)"}},"إدارة الالتزامات"));
@@ -1406,14 +1415,14 @@ function pageMore(){
     var card=el("div",{cls:"card",sty:{overflow:"hidden"}});
     for(var ci=0;ci<cats.length;ci++){
       (function(cat,idx){
-        var row=el("div",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",borderBottom:idx<cats.length-1?"1px solid var(--border)":"none",cursor:"pointer"},onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType=type;go("editCat");}});
+        var row=el("div",{sty:{display:"flex",alignItems:"center",padding:"12px 16px",borderBottom:idx<cats.length-1?"1px solid var(--border)":"none",cursor:"pointer"},onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType=type;go("editCat");}});
         row.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:cat.c+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",flexShrink:"0"}},cat.em));
         row.appendChild(el("div",{sty:{flex:"1",fontSize:"14px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
         row.appendChild(el("span",{sty:{color:"var(--text3)",fontSize:"16px"}},"›"));
         card.appendChild(row);
       })(cats[ci],ci);
     }
-    var addBtn=el("button",{sty:{display:"flex",alignItems:"center",gap:"12px",padding:"12px 16px",width:"100%",background:"none",border:"none",cursor:"pointer",borderTop:cats.length?"1px solid var(--border)":"none"},onclick:function(){UI.editCat=null;UI.editCatType=type;go("editCat");}});
+    var addBtn=el("button",{sty:{display:"flex",alignItems:"center",padding:"12px 16px",width:"100%",background:"none",border:"none",cursor:"pointer",borderTop:cats.length?"1px solid var(--border)":"none"},onclick:function(){UI.editCat=null;UI.editCatType=type;go("editCat");}});
     addBtn.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:"var(--accent-bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:"0"}},"＋"));
     addBtn.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"700",color:"var(--accent)"}},type==="expense"?"إضافة فئة مصروف":"إضافة فئة دخل"));
     card.appendChild(addBtn);return card;
@@ -1432,7 +1441,7 @@ function pageMore(){
   ];
   for(var i=0;i<rows.length;i++){
     (function(r,idx){
-      var btn=el("button",{sty:{display:"flex",alignItems:"center",gap:"14px",padding:"14px 18px",width:"100%",background:"none",border:"none",cursor:"pointer",borderBottom:idx<rows.length-1?"1px solid var(--border)":"none"},onclick:r.action});
+      var btn=el("button",{sty:{display:"flex",alignItems:"center",padding:"14px 18px",width:"100%",background:"none",border:"none",cursor:"pointer",borderBottom:idx<rows.length-1?"1px solid var(--border)":"none"},onclick:r.action});
       btn.appendChild(el("div",{sty:{width:"40px",height:"40px",borderRadius:"11px",background:"var(--surface2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px"}},r.icon));
       btn.appendChild(el("div",{sty:{flex:"1",textAlign:"right"}},[
         el("div",{sty:{fontSize:"14px",fontWeight:"700",color:"var(--text)"}},r.title),
@@ -1555,7 +1564,7 @@ function pageConfirmXL(){
   var incByCat={};for(var i=0;i<pd.incRows.length;i++){var l=pd.incRows[i].label;incByCat[l]=(incByCat[l]||0)+pd.incRows[i].amount;}
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"80px",background:"var(--bg)",overflowY:"auto"}});
   var hdr=el("div",{cls:"hdr"});
-  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px",marginBottom:"14px"}},[
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",marginBottom:"14px"}},[
     el("button",{cls:"back-btn",onclick:function(){go("more");}},["←"]),
     el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},"تأكيد استيراد Excel")
   ]));
@@ -1638,10 +1647,10 @@ function pageEditCat(){
   var curColor=f.c||CAT_COLORS[0];var curEmoji=f.em||"😊";
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
-  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",gap:"14px"}},[backBtn("more"),el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الفئة":"فئة جديدة")]));
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center"}},[backBtn("more"),el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},isEdit?"تعديل الفئة":"فئة جديدة")]));
   page.appendChild(hdr);
   var body=el("div",{cls:"content"});
-  var preview=el("div",{cls:"card card-p",sty:{display:"flex",alignItems:"center",gap:"14px"}});
+  var preview=el("div",{cls:"card card-p",sty:{display:"flex",alignItems:"center"}});
   var previewIcon=el("div",{sty:{width:"48px",height:"48px",borderRadius:"14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",background:curColor+"22",flexShrink:"0"}},curEmoji);
   var previewLbl=el("div",{sty:{flex:"1",fontSize:"16px",fontWeight:"800",color:"var(--text)"}},f.lbl||"اسم الفئة");
   preview.appendChild(previewIcon);preview.appendChild(previewLbl);body.appendChild(preview);
@@ -1650,7 +1659,7 @@ function pageEditCat(){
   ni.addEventListener("input",function(){previewLbl.textContent=ni.value||"اسم الفئة";});
   body.appendChild(ni);
   body.appendChild(secTitle("الأيقونة","4px"));
-  var emojiWrap=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
+  var emojiWrap=el("div",{sty:{display:"flex",flexWrap:"wrap"}});
   function setEmoji(em){curEmoji=em;previewIcon.textContent=em;var btns=emojiWrap.querySelectorAll("button");for(var i=0;i<btns.length;i++){btns[i].style.borderColor="var(--border)";btns[i].style.background="var(--surface2)";}}
   for(var i=0;i<CAT_EMOJIS.length;i++){
     (function(em){
@@ -1662,7 +1671,7 @@ function pageEditCat(){
   customEm.addEventListener("input",function(){if(customEm.value.trim())setEmoji(customEm.value.trim());});
   emojiWrap.appendChild(customEm);body.appendChild(emojiWrap);
   body.appendChild(secTitle("اللون","4px"));
-  var colorWrap=el("div",{sty:{display:"flex",flexWrap:"wrap",gap:"8px"}});
+  var colorWrap=el("div",{sty:{display:"flex",flexWrap:"wrap"}});
   function setColor(c){curColor=c;previewIcon.style.background=c+"22";var btns=colorWrap.querySelectorAll("button");for(var i=0;i<btns.length;i++)btns[i].style.border="3px solid transparent";}
   for(var i=0;i<CAT_COLORS.length;i++){
     (function(c){
@@ -1679,7 +1688,7 @@ function pageEditCat(){
     if(type==="income"){INC_CATS=cats;S.incCats=cats;}else{EXP_CATS=cats;S.expCats=cats;}
     save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go("more");
   };
-  var btnRow=el("div",{sty:{display:"flex",gap:"10px",marginTop:"8px"}});
+  var btnRow=el("div",{sty:{display:"flex",marginTop:"8px"}});
   btnRow.appendChild(el("button",{cls:"btn btn-accent",onclick:saveFn},isEdit?"💾 حفظ":"✅ إضافة"));
   if(isEdit){
     var fid=f.id;
@@ -1721,6 +1730,10 @@ function render(){
   else root.appendChild(pageHome());
 }
 
+window.onerror = function(msg, src, line, col, err) {
+  document.getElementById("root").innerHTML = "<div style='padding:40px 20px;font-family:Cairo,sans-serif;direction:rtl;'><h2 style='color:#E5484D;margin-bottom:10px'>خطأ في التطبيق</h2><p style='font-size:13px;color:#666'>" + (msg||"") + "</p><p style='font-size:11px;color:#999;margin-top:8px'>السطر: " + line + "</p></div>";
+  return true;
+};
 if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",render);}
 else{render();}
 </script>
