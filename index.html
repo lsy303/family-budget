@@ -420,6 +420,7 @@ var UI = {
   editCommit:  null,
   pivotData:   null,
   modalCb:     null,
+  selectedCat: null,
 };
 
 // ════════════════════════════════════════════
@@ -1337,14 +1338,20 @@ function pageReport(){
     var bc=el("div",{cls:"card card-p"});
     var barChart=el("div",{cls:"bar-chart"});
     for(var i=0;i<expData.length;i++){
-      var d=expData[i];
-      var pct=st.exp>0?(d.v/st.exp)*100:0;
-      var br=el("div",{cls:"bar-row"});
-      br.appendChild(el("div",{cls:"bar-row-lbl"},d.cat.em+" "+d.cat.lbl));
-      var bt=el("div",{cls:"bar-track"});
-      bt.appendChild(el("div",{cls:"bar-fill",sty:{width:pct+"%",background:d.cat.c}}));
-      br.appendChild(bt);br.appendChild(el("div",{cls:"bar-val"},fmt(d.v)));
-      barChart.appendChild(br);
+      (function(d){
+        var pct=st.exp>0?(d.v/st.exp)*100:0;
+        var br=el("div",{cls:"bar-row",sty:{cursor:"pointer",borderRadius:"8px",padding:"4px",margin:"-4px"},onclick:function(){UI.selectedCat=d.cat;go("catDetail");}});
+        var lbl=el("div",{cls:"bar-row-lbl"},d.cat.em+" "+d.cat.lbl);
+        br.appendChild(lbl);
+        var bt=el("div",{cls:"bar-track"});
+        bt.appendChild(el("div",{cls:"bar-fill",sty:{width:pct+"%",background:d.cat.c}}));
+        br.appendChild(bt);
+        var valRow=el("div",{sty:{display:"flex",flexDirection:"column",alignItems:"flex-start",width:"70px",flexShrink:"0"}});
+        valRow.appendChild(el("div",{cls:"bar-val"},fmt(d.v)));
+        valRow.appendChild(el("div",{sty:{fontSize:"10px",color:"var(--text3)",fontWeight:"700"}},"التفاصيل ›"));
+        br.appendChild(valRow);
+        barChart.appendChild(br);
+      })(expData[i]);
     }
     bc.appendChild(barChart);body.appendChild(bc);
   }
@@ -1704,6 +1711,91 @@ function pageEditCat(){
 }
 
 // ════════════════════════════════════════════
+//  PAGE: CATEGORY DETAIL (from report)
+// ════════════════════════════════════════════
+function pageCatDetail(){
+  var cat=UI.selectedCat;
+  if(!cat){go("report");return el("div");}
+  var ym=UI.month;
+  var st=monthStats(ym);
+
+  // Get all transactions for this category in selected month
+  var txs=[];
+  for(var i=0;i<st.txs.length;i++){
+    if(st.txs[i].type==="expense"&&st.txs[i].catId===cat.id) txs.push(st.txs[i]);
+  }
+  txs.sort(function(a,b){return a.date<b.date?1:-1;});
+
+  var total=0;
+  for(var i=0;i<txs.length;i++) total+=txs[i].amount;
+  var pct=st.exp>0?Math.round((total/st.exp)*100):0;
+
+  var page=el("div",{cls:"page"});
+
+  // Header
+  var hdr=el("div",{cls:"hdr",sty:{background:"linear-gradient(145deg,"+cat.c+","+cat.c+"CC)"}});
+  hdr.appendChild(el("div",{sty:{display:"flex",alignItems:"center",marginBottom:"16px"}},[
+    el("button",{cls:"back-btn",onclick:function(){go("report");}},["←"]),
+    el("div",{sty:{fontSize:"22px",marginRight:"10px"}},cat.em),
+    el("div",{sty:{flex:"1"}},[
+      el("div",{sty:{fontSize:"19px",fontWeight:"900",color:"#fff"}},cat.lbl),
+      el("div",{sty:{fontSize:"12px",color:"rgba(255,255,255,.7)",marginTop:"2px"}},monthLbl(ym))
+    ])
+  ]));
+  // Stats row
+  var sr=el("div",{sty:{display:"flex"}});
+  function hstat(lbl,val,sub){
+    var d=el("div",{sty:{flex:"1",background:"rgba(255,255,255,.12)",borderRadius:"12px",padding:"12px 14px"}});
+    d.appendChild(el("div",{sty:{fontSize:"10px",color:"rgba(255,255,255,.6)",fontWeight:"700",marginBottom:"3px"}},lbl));
+    d.appendChild(el("div",{sty:{fontSize:"18px",fontWeight:"900",color:"#fff"}},val));
+    if(sub) d.appendChild(el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.6)",marginTop:"2px"}},sub));
+    return d;
+  }
+  sr.appendChild(hstat("الإجمالي",fmt(total)+" "+CUR,""));
+  sr.appendChild(el("div",{sty:{width:"8px"}}));
+  sr.appendChild(hstat("عدد المعاملات",String(txs.length)+"",""));
+  sr.appendChild(el("div",{sty:{width:"8px"}}));
+  sr.appendChild(hstat("من المصروفات",pct+"%",""));
+  hdr.appendChild(sr);
+  page.appendChild(hdr);
+
+  var body=el("div",{cls:"content"});
+
+  if(!txs.length){
+    body.appendChild(el("div",{cls:"empty"},[
+      el("div",{cls:"empty-icon"},cat.em),
+      el("div",{cls:"empty-title"},"لا توجد معاملات"),
+      el("div",{cls:"empty-body"},"لا يوجد مصروف في فئة "+cat.lbl+" هذا الشهر")
+    ]));
+  } else {
+    body.appendChild(secTitle("جميع المعاملات ("+txs.length+")"));
+    var card=el("div",{cls:"card",sty:{overflow:"hidden"}});
+    for(var i=0;i<txs.length;i++){
+      (function(t,idx){
+        var row=el("div",{cls:"tx-row",sty:{borderBottom:idx<txs.length-1?"1px solid var(--border)":"none",cursor:"pointer"},
+          onclick:function(){UI.editTx=t;go("editTx");}});
+        row.appendChild(el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},t.isCommit?"📋":cat.em));
+        var info=el("div",{cls:"tx-info"});
+        info.appendChild(el("div",{cls:"tx-name"},t.label||cat.lbl));
+        info.appendChild(el("div",{cls:"tx-sub"},t.date+(t.isCommit?" · التزام ثابت":t.note?" · "+t.note:"")));
+        row.appendChild(info);
+        row.appendChild(el("div",{cls:"tx-amt",sty:{color:"var(--expense)"}},fmt(t.amount)+" "+CUR));
+        card.appendChild(row);
+      })(txs[i],i);
+    }
+    // Total row
+    var totRow=el("div",{sty:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",background:"var(--surface2)",borderTop:"1px solid var(--border)"}});
+    totRow.appendChild(el("span",{sty:{fontSize:"13px",fontWeight:"800",color:"var(--text2)"}},"الإجمالي"));
+    totRow.appendChild(el("span",{sty:{fontSize:"16px",fontWeight:"900",color:cat.c}},fmt(total)+" "+CUR));
+    card.appendChild(totRow);
+    body.appendChild(card);
+  }
+
+  page.appendChild(body);
+  return page;
+}
+
+// ════════════════════════════════════════════
 //  RENDER
 // ════════════════════════════════════════════
 function render(){
@@ -1724,6 +1816,7 @@ function render(){
     editCat:    pageEditCat,
     commitments:pageCommits,
     editCommit: pageAECommit,
+    catDetail:  pageCatDetail,
   };
   var fn=pages[UI.view];
   if(fn)root.appendChild(fn());
