@@ -40,13 +40,6 @@
   --theme-hdr1:   #1D6FA4;
   --theme-hdr2:   #1558A0;
 }
-body.pink {
-  --theme-accent: #C2185B;
-  --theme-hdr1:   #E75480;
-  --theme-hdr2:   #C2185B;
-  --accent:       #C2185B;
-  --accent-bg:    #FCE4EC;
-}
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 html, body { height:100%; background:var(--bg); }
 body { font-family:'Cairo',-apple-system,BlinkMacSystemFont,sans-serif; max-width:430px; margin:0 auto; color:var(--text); overflow-x:hidden; -webkit-font-smoothing:antialiased; }
@@ -300,6 +293,25 @@ tr:last-child td { border-bottom:none; }
 .commit-banner-sub   { font-size:12px; color:rgba(255,255,255,.7); }
 .commit-banner-arrow { font-size:18px; color:rgba(255,255,255,.7); }
 
+/* ── SWITCH ── */
+.switch { position:relative; width:46px; height:26px; border-radius:99px; background:var(--border); flex-shrink:0; transition:background .2s; }
+.switch.on { background:var(--theme-accent); }
+.switch-knob { position:absolute; top:2px; right:2px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.2); transition:right .2s; }
+.switch.on .switch-knob { right:22px; }
+
+/* ── LOCK SCREEN ── */
+.lock-wrap { min-height:100vh; background:linear-gradient(160deg,var(--theme-hdr1),var(--theme-hdr2)); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; text-align:center; }
+.lock-icon { font-size:56px; margin-bottom:14px; }
+.lock-title { font-size:18px; font-weight:900; color:#fff; margin-bottom:6px; }
+.lock-sub { font-size:12px; color:rgba(255,255,255,.65); margin-bottom:28px; }
+.lock-dots { display:flex; justify-content:center; margin-bottom:28px; } .lock-dots > * + * { margin-right:12px; }
+.lock-dot { width:14px; height:14px; border-radius:50%; background:rgba(255,255,255,.2); border:1.5px solid rgba(255,255,255,.4); transition:all .15s; }
+.lock-dot.filled { background:#fff; }
+.lock-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; width:100%; max-width:260px; }
+.lock-key { aspect-ratio:1; border-radius:50%; background:rgba(255,255,255,.12); color:#fff; font-size:22px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.lock-key:active { background:rgba(255,255,255,.25); }
+.lock-forgot { margin-top:24px; background:none; border:none; color:rgba(255,255,255,.7); font-size:13px; font-weight:700; text-decoration:underline; }
+
 /* iOS flex gap compatibility */
 .flex-gap-8  > * + * { margin-right:8px; }
 .flex-gap-10 > * + * { margin-right:10px; }
@@ -342,6 +354,20 @@ tr:last-child td { border-bottom:none; }
   </div>
 </div>
 
+<!-- Backup Reminder Sheet -->
+<div class="overlay" id="backup-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="font-size:40px;text-align:center;margin-bottom:10px;">📤</div>
+    <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;text-align:center;">نسخة احتياطية لبياناتك</div>
+    <div id="backup-subtitle" style="font-size:13px;color:var(--text2);margin-bottom:20px;text-align:center;line-height:1.7;"></div>
+    <div style="display:flex;">
+      <button class="btn btn-accent" id="backup-do-btn">📤 تصدير الآن</button>
+      <button class="btn btn-ghost" id="backup-snooze-btn">تذكيري بعد 3 أيام</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════
 //  CONSTANTS
@@ -375,6 +401,12 @@ var DEFAULT_INC_CATS = [
 // Commitment emoji options
 var COMMIT_EMOJIS = ["🏠","🚗","📱","💡","🌊","🎓","🏦","🛡️","📺","💊","🧹","🔧","💳","📋","🏋️","☕"];
 
+// Theme color palette
+var THEME_COLORS = ["#1D6FA4","#0EA370","#7C3AED","#C2185B","#D97706","#E5484D","#0F766E","#4338CA","#DB2777","#65A30D","#0EA5E9","#334155"];
+
+// Security questions for PIN recovery
+var SEC_QUESTIONS = ["اسم أول مدرسة درست فيها؟","اسم شارع الطفولة؟","لقب طفولتك؟","اسم أول سيارة امتلكتها؟"];
+
 // ════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════
@@ -387,11 +419,18 @@ var INC_CATS = [];
 var S = {
   txs:        ld("mb_tx",[]),
   onboarded:  ld("mb_on",false),
-  theme:      ld("mb_th","blue"),
+  themeColor: ld("mb_th",null),
   expCats:    ld("mb_ec",null),
   incCats:    ld("mb_ic",null),
   commits:    ld("mb_co",[]),   // [{id,name,amount,catId,emoji,appliedMonths:[]}]
+  pinEnabled: ld("mb_pe",false),
+  pinHash:    ld("mb_ph",null),
+  pinQ:       ld("mb_pq",0),
+  pinAHash:   ld("mb_pa",null),
+  lastBackup: ld("mb_lb",null),
+  backupSnooze: ld("mb_bs",null),
 };
+if(!S.themeColor || S.themeColor==="blue" || S.themeColor==="pink"){S.themeColor="#1D6FA4";}
 EXP_CATS = S.expCats ? S.expCats : DEFAULT_EXP_CATS.slice();
 INC_CATS = S.incCats ? S.incCats : DEFAULT_INC_CATS.slice();
 if(!S.expCats){S.expCats=EXP_CATS;}
@@ -400,10 +439,16 @@ if(!S.incCats){S.incCats=INC_CATS;}
 function save(){
   sv("mb_tx",S.txs);
   sv("mb_on",S.onboarded);
-  sv("mb_th",S.theme);
+  sv("mb_th",S.themeColor);
   sv("mb_ec",S.expCats);
   sv("mb_ic",S.incCats);
   sv("mb_co",S.commits);
+  sv("mb_pe",S.pinEnabled);
+  sv("mb_ph",S.pinHash);
+  sv("mb_pq",S.pinQ);
+  sv("mb_pa",S.pinAHash);
+  sv("mb_lb",S.lastBackup);
+  sv("mb_bs",S.backupSnooze);
 }
 
 // ════════════════════════════════════════════
@@ -412,7 +457,7 @@ function save(){
 var UI = {
   view:        S.onboarded ? "home" : "onboard",
   tab:         "home",
-  month:       new Date().toISOString().slice(0,7),
+  month:       ymLocal(new Date()),
   obStep:      0,
   editTx:      null,
   editCat:     null,
@@ -421,17 +466,52 @@ var UI = {
   pivotData:   null,
   modalCb:     null,
   selectedCat: null,
+  locked:      S.pinEnabled ? true : false,
+  lockInput:   "",
+  lockMode:    "enter", // enter | forgot | setNew1 | setNew2 | setQuestion | disableConfirm
+  lockTemp:    "",
+  lockPurpose: "",
+  txSearch:    "",
 };
 
 // ════════════════════════════════════════════
 //  HELPERS
 // ════════════════════════════════════════════
+function pad2(n){n=Number(n);return n<10?"0"+n:String(n);}
+function ymdLocal(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());}
+function ymLocal(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1);}
 function uid(){return "_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);}
 function fmt(n){return Number(n||0).toFixed(3).replace(/\B(?=(\d{3})+(?!\d))/g,",");}
-function today(){return new Date().toISOString().slice(0,10);}
+function today(){return ymdLocal(new Date());}
 function cleanN(v){return parseFloat(String(v||0).replace(/,/g,"").replace(/[^0-9.]/g,""))||0;}
 function monthLbl(ym){var p=ym.split("-");return MN[parseInt(p[1])-1]+" "+p[0];}
-function thisMonth(){return new Date().toISOString().slice(0,7);}
+function thisMonth(){return ymLocal(new Date());}
+function daysSince(dateStr){if(!dateStr)return 9999;var d1=new Date(dateStr),d2=new Date();return Math.floor((d2-d1)/86400000);}
+function addDays(dateStr,n){var d=new Date(dateStr);d.setDate(d.getDate()+n);return ymdLocal(d);}
+
+function shadeColor(hex,pct){
+  var h=hex.replace("#","");
+  var r=parseInt(h.substring(0,2),16),g=parseInt(h.substring(2,4),16),b=parseInt(h.substring(4,6),16);
+  r=Math.round(r*(1+pct/100));g=Math.round(g*(1+pct/100));b=Math.round(b*(1+pct/100));
+  r=Math.min(255,Math.max(0,r));g=Math.min(255,Math.max(0,g));b=Math.min(255,Math.max(0,b));
+  function h2(n){var s=n.toString(16);return s.length<2?"0"+s:s;}
+  return "#"+h2(r)+h2(g)+h2(b);
+}
+function toHex2(n){var s=n.toString(16);return s.length<2?"0"+s:s;}
+function sha256Hex(str){
+  var enc;
+  try{enc=new TextEncoder().encode(str);}catch(e){enc=null;}
+  if(!enc||!window.crypto||!window.crypto.subtle){
+    // Fallback (very old browsers): simple non-cryptographic hash, still keeps PIN out of plaintext
+    var h=0;for(var i=0;i<str.length;i++){h=((h<<5)-h+str.charCodeAt(i))|0;}
+    return Promise.resolve("fb"+Math.abs(h).toString(16));
+  }
+  return window.crypto.subtle.digest("SHA-256",enc).then(function(buf){
+    var arr=new Uint8Array(buf),out="";
+    for(var i=0;i<arr.length;i++)out+=toHex2(arr[i]);
+    return out;
+  });
+}
 
 function getCat(type,id){
   var arr=type==="income"?INC_CATS:EXP_CATS;
@@ -442,7 +522,7 @@ function dataMonths(){
   var m={};
   for(var i=0;i<S.txs.length;i++) m[S.txs[i].date.slice(0,7)]=1;
   var arr=Object.keys(m).sort().reverse();
-  if(!arr.length) arr=[new Date().toISOString().slice(0,7)];
+  if(!arr.length) arr=[thisMonth()];
   return arr;
 }
 function monthStats(ym){
@@ -463,7 +543,16 @@ function monthStats(ym){
   }
   return{inc:inc,exp:exp,commitExp:commitExp,freeExp:exp-commitExp,bal:inc-exp,available:inc-commitExp,txs:txs,byEC:byEC,byIC:byIC};
 }
-function applyTheme(){document.body.className=S.theme==="pink"?"pink":"";}
+function applyTheme(){
+  var c=S.themeColor||"#1D6FA4";
+  var dark=shadeColor(c,-14);
+  var root=document.documentElement.style;
+  root.setProperty("--theme-accent",c);
+  root.setProperty("--theme-hdr1",c);
+  root.setProperty("--theme-hdr2",dark);
+  root.setProperty("--accent",c);
+  root.setProperty("--accent-bg",c+"18");
+}
 
 // Pending commitments for this month
 function pendingCommits(){
@@ -552,6 +641,27 @@ document.getElementById("commit-apply-btn").onclick=function(){
 document.getElementById("commit-skip-btn").onclick=closeCommitSheet;
 document.getElementById("commit-overlay").onclick=function(e){if(e.target.id==="commit-overlay")closeCommitSheet();};
 
+// ── Backup reminder sheet
+function needsBackupReminder(){
+  if(!S.txs.length) return false;
+  if(S.backupSnooze && today()<S.backupSnooze) return false;
+  return daysSince(S.lastBackup)>=14;
+}
+function openBackupSheet(){
+  document.getElementById("backup-subtitle").textContent = S.lastBackup
+    ? "مرّت "+daysSince(S.lastBackup)+" يومًا منذ آخر نسخة احتياطية. صدّر نسخة JSON الآن لحماية بياناتك من الضياع."
+    : "لم تُنشئ نسخة احتياطية بعد. صدّر نسخة JSON الآن لحماية بياناتك من الضياع.";
+  document.getElementById("backup-overlay").classList.add("show");
+}
+function closeBackupSheet(){document.getElementById("backup-overlay").classList.remove("show");}
+document.getElementById("backup-do-btn").onclick=function(){
+  exportAll();S.lastBackup=today();S.backupSnooze=null;save();closeBackupSheet();render();
+};
+document.getElementById("backup-snooze-btn").onclick=function(){
+  S.backupSnooze=addDays(today(),3);save();closeBackupSheet();
+};
+document.getElementById("backup-overlay").onclick=function(e){if(e.target.id==="backup-overlay")closeBackupSheet();};
+
 // ════════════════════════════════════════════
 //  DOM BUILDER
 // ════════════════════════════════════════════
@@ -597,6 +707,11 @@ function inpEl(attrs){
   var i=el("input",attrs);
   if(extra){var sk=Object.keys(extra);for(var j=0;j<sk.length;j++)i.style[sk[j]]=extra[sk[j]];}
   return i;
+}
+function switchEl(isOn,onToggle){
+  var sw=el("div",{cls:"switch"+(isOn?" on":""),onclick:onToggle});
+  sw.appendChild(el("div",{cls:"switch-knob"}));
+  return sw;
 }
 function tabBar(){
   var bar=el("div",{cls:"tabbar"});
@@ -681,8 +796,162 @@ function buildAlerts(st){
       alerts.push({type:"warn",msg:"⚠️ استهلكت "+Math.round(pct)+"% من المبلغ المتاح للإنفاق"});
     }
   }
+  // Per-category budget alerts
+  for(var i=0;i<EXP_CATS.length;i++){
+    var cat=EXP_CATS[i];
+    if(!cat.budget||cat.budget<=0) continue;
+    var spent=st.byEC[cat.id]||0;
+    var cpct=(spent/cat.budget)*100;
+    if(cpct>=100){
+      alerts.push({type:"over",msg:"🚨 "+cat.em+" "+cat.lbl+": تجاوزت ميزانية الفئة بـ "+fmt(spent-cat.budget)+" "+CUR});
+    } else if(cpct>=80){
+      alerts.push({type:"warn",msg:"⚠️ "+cat.em+" "+cat.lbl+": استهلكت "+Math.round(cpct)+"% من ميزانية الفئة"});
+    }
+  }
   return alerts;
 }
+
+// ════════════════════════════════════════════
+//  PIN LOCK
+// ════════════════════════════════════════════
+function pageLock(){
+  var wrap=el("div",{cls:"lock-wrap"});
+
+  if(UI.lockMode==="forgot"){
+    wrap.appendChild(el("div",{cls:"lock-icon"},"❓"));
+    wrap.appendChild(el("div",{cls:"lock-title"},"سؤال الاسترداد"));
+    wrap.appendChild(el("div",{cls:"lock-sub"},SEC_QUESTIONS[S.pinQ]||SEC_QUESTIONS[0]));
+    var ansInp=inpEl({placeholder:"إجابتك",sty:{maxWidth:"260px",textAlign:"center",marginBottom:"14px"}});
+    wrap.appendChild(ansInp);
+    wrap.appendChild(el("button",{cls:"btn btn-accent",sty:{maxWidth:"260px"},onclick:function(){
+      var val=ansInp.value.trim().toLowerCase();
+      if(!val){toast("أدخل الإجابة");return;}
+      sha256Hex(val).then(function(h){
+        if(h===S.pinAHash){
+          toast("✅ صحيح — عيّن رقمًا سريًا جديدًا");
+          UI.lockMode="setNew1";UI.lockTemp="";UI.lockInput="";UI.lockPurpose="reset";render();
+        } else {
+          toast("❌ إجابة غير صحيحة");
+        }
+      });
+    }},"تحقق"));
+    wrap.appendChild(el("button",{cls:"lock-forgot",onclick:function(){UI.lockMode="enter";UI.lockInput="";render();}},"← رجوع لإدخال الرقم"));
+    return wrap;
+  }
+
+  if(UI.lockMode==="setQuestion"){
+    wrap.appendChild(el("div",{cls:"lock-icon"},"🛡️"));
+    wrap.appendChild(el("div",{cls:"lock-title"},"سؤال أمان للاسترداد"));
+    wrap.appendChild(el("div",{cls:"lock-sub"},"يُستخدم لو نسيت الرقم السري لاحقًا"));
+    var qSel=el("select",{cls:"inp",sty:{maxWidth:"280px",marginBottom:"12px"}});
+    for(var qi=0;qi<SEC_QUESTIONS.length;qi++) qSel.appendChild(el("option",{value:String(qi)},SEC_QUESTIONS[qi]));
+    wrap.appendChild(qSel);
+    var ansInp2=inpEl({placeholder:"إجابتك",sty:{maxWidth:"280px",textAlign:"center",marginBottom:"14px"}});
+    wrap.appendChild(ansInp2);
+    wrap.appendChild(el("button",{cls:"btn btn-accent",sty:{maxWidth:"280px"},onclick:function(){
+      var ans=ansInp2.value.trim().toLowerCase();
+      if(!ans){toast("أدخل إجابة");return;}
+      sha256Hex(ans).then(function(h){
+        S.pinQ=parseInt(qSel.value)||0;S.pinAHash=h;
+        sha256Hex(UI.lockTemp).then(function(ph){
+          S.pinHash=ph;S.pinEnabled=true;save();
+          UI.locked=false;UI.lockMode="enter";UI.lockInput="";UI.lockTemp="";
+          toast("✅ تم تفعيل القفل");go("more");
+        });
+      });
+    }},"حفظ وتفعيل القفل"));
+    return wrap;
+  }
+
+  var isSetting=UI.lockMode==="setNew1"||UI.lockMode==="setNew2";
+  var title=UI.lockMode==="setNew1"?"عيّن رقمًا سريًا جديدًا":UI.lockMode==="setNew2"?"أكّد الرقم السري":(UI.lockMode==="disableConfirm"?"تأكيد إلغاء القفل":"مرحبًا بعودتك");
+  var sub=isSetting?"4 أرقام":(UI.lockMode==="disableConfirm"?"أدخل الرقم السري الحالي للتأكيد":"أدخل الرقم السري لفتح التطبيق");
+
+  wrap.appendChild(el("div",{cls:"lock-icon"},isSetting?"🔑":"🔒"));
+  wrap.appendChild(el("div",{cls:"lock-title"},title));
+  wrap.appendChild(el("div",{cls:"lock-sub"},sub));
+
+  var dots=el("div",{cls:"lock-dots"});
+  for(var i=0;i<4;i++) dots.appendChild(el("div",{cls:"lock-dot"+(i<UI.lockInput.length?" filled":"")}));
+  wrap.appendChild(dots);
+
+  var keys=["1","2","3","4","5","6","7","8","9","","0","⌫"];
+  var pad=el("div",{cls:"lock-keypad"});
+  for(var i=0;i<keys.length;i++){
+    (function(k){
+      if(k===""){pad.appendChild(el("div"));return;}
+      var b=el("button",{cls:"lock-key",onclick:function(){
+        if(k==="⌫"){UI.lockInput=UI.lockInput.slice(0,-1);render();return;}
+        if(UI.lockInput.length>=4)return;
+        UI.lockInput+=k;
+        if(UI.lockInput.length===4) handleLockComplete();
+        render();
+      }},k);
+      pad.appendChild(b);
+    })(keys[i]);
+  }
+  wrap.appendChild(pad);
+
+  if(UI.lockMode==="enter"){
+    wrap.appendChild(el("button",{cls:"lock-forgot",onclick:function(){UI.lockMode="forgot";UI.lockInput="";render();}},"نسيت الرقم السري؟"));
+  }
+  if(UI.lockMode==="disableConfirm"){
+    wrap.appendChild(el("button",{cls:"lock-forgot",onclick:function(){UI.lockMode="enter";UI.lockInput="";UI.locked=false;go("more");}},"← إلغاء"));
+  }
+  return wrap;
+}
+function handleLockComplete(){
+  var val=UI.lockInput;
+
+  if(UI.lockMode==="disableConfirm"){
+    sha256Hex(val).then(function(h){
+      if(h===S.pinHash){
+        S.pinEnabled=false;S.pinHash=null;S.pinAHash=null;S.pinQ=0;save();
+        UI.locked=false;UI.lockMode="enter";UI.lockInput="";
+        toast("✅ تم إلغاء القفل");go("more");
+      } else {
+        toast("❌ رقم غير صحيح");UI.lockInput="";render();
+      }
+    });
+    return;
+  }
+  if(UI.lockMode==="setNew1"){
+    UI.lockTemp=val;UI.lockInput="";UI.lockMode="setNew2";render();return;
+  }
+  if(UI.lockMode==="setNew2"){
+    if(val!==UI.lockTemp){toast("❌ الرقمان غير متطابقين");UI.lockInput="";UI.lockMode="setNew1";UI.lockTemp="";render();return;}
+    if(UI.lockPurpose==="reset"){
+      // resetting an existing PIN via security question: keep the existing question/answer, just replace the PIN
+      sha256Hex(val).then(function(h){
+        S.pinHash=h;save();
+        UI.locked=false;UI.lockMode="enter";UI.lockInput="";UI.lockTemp="";UI.lockPurpose="";
+        toast("✅ تم تحديث الرقم السري");go("more");
+      });
+      return;
+    }
+    // first-time setup (or "change PIN" from settings): also (re)capture the security question
+    UI.lockMode="setQuestion";render();
+    return;
+  }
+  // mode === enter
+  sha256Hex(val).then(function(h){
+    if(h===S.pinHash){
+      UI.locked=false;UI.lockInput="";
+      render();
+    } else {
+      toast("❌ رقم غير صحيح");
+      UI.lockInput="";render();
+    }
+  });
+}
+document.addEventListener("visibilitychange",function(){
+  if(document.hidden){ window._mbHiddenAt=Date.now(); }
+  else {
+    if(S.pinEnabled && !UI.locked && window._mbHiddenAt && (Date.now()-window._mbHiddenAt)>60000){
+      UI.locked=true;UI.lockMode="enter";UI.lockInput="";render();
+    }
+  }
+});
 
 // ════════════════════════════════════════════
 //  PAGE: ONBOARD
@@ -779,6 +1048,12 @@ function pageHome(){
 
   var body=el("div",{cls:"content"});
 
+  // ── Backup reminder popup (shown once per app session, not repeated on every re-render)
+  if(needsBackupReminder() && !window._mbBackupPromptShown){
+    window._mbBackupPromptShown=true;
+    setTimeout(openBackupSheet,400);
+  }
+
   // ── Commitments banner (if pending)
   var pending=pendingCommits();
   if(pending.length){
@@ -871,6 +1146,12 @@ function pageHome(){
 // ════════════════════════════════════════════
 //  PAGE: TRANSACTION LIST
 // ════════════════════════════════════════════
+function txMatchesSearch(t,cat,q){
+  if(!q) return true;
+  q=q.toLowerCase();
+  var hay=((t.label||"")+" "+(t.note||"")+" "+cat.lbl).toLowerCase();
+  return hay.indexOf(q)>=0;
+}
 function pageTxList(type){
   UI.tab=type==="income"?"income":"expense";
   var ym=UI.month;
@@ -878,7 +1159,7 @@ function pageTxList(type){
   var total=type==="income"?st.inc:st.exp;
   var cats=type==="income"?INC_CATS:EXP_CATS;
   var byC=type==="income"?st.byIC:st.byEC;
-  var txs=st.txs.filter(function(t){return t.type===type;}).sort(function(a,b){return a.date<b.date?1:-1;});
+  var allTxs=st.txs.filter(function(t){return t.type===type;}).sort(function(a,b){return a.date<b.date?1:-1;});
 
   var page=el("div",{cls:"page"});
   var hdr=el("div",{cls:"hdr"});
@@ -913,7 +1194,7 @@ function pageTxList(type){
     body.appendChild(sr);
   }
 
-  // Category breakdown
+  // Category breakdown (with budget progress for expenses)
   var catTotals=[];
   for(var i=0;i<cats.length;i++){
     var v=byC[cats[i].id]||0;
@@ -925,29 +1206,63 @@ function pageTxList(type){
     var cc=el("div",{cls:"card"});
     for(var i=0;i<catTotals.length;i++){
       (function(x,idx){
-        var row=el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:idx<catTotals.length-1?"1px solid var(--border)":"none"},
+        var wrapRow=el("div",{sty:{padding:"12px 16px",borderBottom:idx<catTotals.length-1?"1px solid var(--border)":"none",cursor:"pointer"},
           onclick:function(){UI.editTx=null;go(type==="income"?"addInc":"addExp");}});
-        row.appendChild(el("div",{cls:"tx-icon",sty:{background:x.cat.c+"18"}},x.cat.em));
+        var row=el("div",{sty:{display:"flex",alignItems:"center"}});
+        row.appendChild(el("div",{cls:"tx-icon",sty:{background:x.cat.c+"18",marginLeft:"12px"}},x.cat.em));
         var info=el("div",{cls:"tx-info"});
         info.appendChild(el("div",{cls:"tx-name"},x.cat.lbl));
         var pct=total>0?Math.round((x.v/total)*100):0;
-        info.appendChild(el("div",{cls:"tx-sub"},pct+"%"));
+        var subTxt=pct+"%";
+        if(type==="expense"&&x.cat.budget>0) subTxt+="  ·  ميزانية "+fmt(x.cat.budget)+" "+CUR;
+        info.appendChild(el("div",{cls:"tx-sub"},subTxt));
         row.appendChild(info);
         row.appendChild(el("div",{cls:"tx-amt",sty:{color:x.cat.c}},fmt(x.v)));
-        cc.appendChild(row);
+        wrapRow.appendChild(row);
+        if(type==="expense"&&x.cat.budget>0){
+          var bpct=Math.min(100,(x.v/x.cat.budget)*100);
+          var bcolor=bpct>=100?"var(--expense)":bpct>=80?"var(--amber)":x.cat.c;
+          var pw=el("div",{cls:"prog",sty:{marginTop:"8px"}});
+          pw.appendChild(el("div",{cls:"prog-fill",sty:{width:bpct+"%",background:bcolor}}));
+          wrapRow.appendChild(pw);
+        }
+        cc.appendChild(wrapRow);
       })(catTotals[i],i);
     }
     body.appendChild(cc);
   }
 
-  // All transactions
-  if(txs.length){
-    body.appendChild(secTitle("جميع المعاملات ("+txs.length+")","4px"));
-    var tc=el("div",{cls:"card"});
-    for(var i=0;i<txs.length;i++){
+  // Search box
+  var searchInp=inpEl({value:UI.txSearch,placeholder:"🔎 ابحث بالاسم أو الملاحظة أو الفئة..."});
+  if(allTxs.length){
+    body.appendChild(secTitle("جميع المعاملات ("+allTxs.length+")","4px"));
+    body.appendChild(searchInp);
+  }
+
+  var listWrap=el("div",{sty:{marginTop:"10px"}});
+  var tc=el("div",{cls:"card"});
+  var emptyBox=el("div",{cls:"empty"},[
+    el("div",{cls:"empty-icon"},type==="income"?"💰":"💸"),
+    el("div",{cls:"empty-title"},"لا نتائج"),
+    el("div",{cls:"empty-body"},"جرّب كلمة بحث مختلفة")
+  ]);
+  listWrap.appendChild(tc);
+  listWrap.appendChild(emptyBox);
+
+  function renderTxRows(q){
+    tc.innerHTML="";
+    var filtered=allTxs.filter(function(t){return txMatchesSearch(t,getCat(t.type,t.catId),q);});
+    if(!filtered.length){
+      tc.style.display="none";
+      emptyBox.style.display="";
+      return;
+    }
+    tc.style.display="";
+    emptyBox.style.display="none";
+    for(var i=0;i<filtered.length;i++){
       (function(t,idx){
         var cat=getCat(t.type,t.catId);
-        var row=el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:idx<txs.length-1?"1px solid var(--border)":"none"},
+        var row=el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:idx<filtered.length-1?"1px solid var(--border)":"none"},
           onclick:function(){UI.editTx=t;go("editTx");}});
         row.appendChild(el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},t.isCommit?"📋":cat.em));
         var info=el("div",{cls:"tx-info"});
@@ -956,16 +1271,20 @@ function pageTxList(type){
         row.appendChild(info);
         row.appendChild(el("div",{cls:"tx-amt",sty:{color:type==="income"?"var(--income)":"var(--expense)"}},fmt(t.amount)));
         tc.appendChild(row);
-      })(txs[i],i);
+      })(filtered[i],i);
     }
-    body.appendChild(tc);
-  } else {
+  }
+  if(!allTxs.length){
     body.appendChild(el("div",{cls:"empty"},[
       el("div",{cls:"empty-icon"},type==="income"?"💰":"💸"),
       el("div",{cls:"empty-title"},type==="income"?"لا يوجد دخل":"لا توجد مصروفات"),
       el("div",{cls:"empty-body"},"اضغط + أسفل للإضافة")
     ]));
+  } else {
+    body.appendChild(listWrap);
+    renderTxRows(UI.txSearch);
   }
+  searchInp.addEventListener("input",function(){UI.txSearch=searchInp.value;renderTxRows(UI.txSearch);});
 
   page.appendChild(body);
   page.appendChild(el("button",{cls:"btn",
@@ -1387,22 +1706,47 @@ function pageMore(){
 
   var body=el("div",{cls:"content"});
 
-  // Theme
-  body.appendChild(secTitle("مظهر التطبيق"));
+  // Theme color
+  body.appendChild(secTitle("لون التطبيق"));
   var thCard=el("div",{cls:"card card-p"});
-  var thRow=el("div",{sty:{display:"flex"}});
-  var themes=[{id:"blue",lbl:"ولد 👦",c1:"#5B9BD5",c2:"#1D6FA4"},{id:"pink",lbl:"بنت 👧",c1:"#F4A7C3",c2:"#C2185B"}];
-  for(var i=0;i<themes.length;i++){
-    (function(t){
-      var active=S.theme===t.id;
-      var b=el("button",{sty:{flex:"1",padding:"14px 8px",borderRadius:"14px",border:"2px solid",borderColor:active?t.c2:"var(--border)",background:active?"linear-gradient(135deg,"+t.c1+","+t.c2+")":"var(--surface2)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",fontFamily:"inherit"},onclick:function(){S.theme=t.id;save();render();}});
-      b.appendChild(el("div",{sty:{width:"32px",height:"32px",borderRadius:"10px",background:"linear-gradient(135deg,"+t.c1+","+t.c2+")",border:active?"2px solid rgba(255,255,255,.4)":"none"}}));
-      b.appendChild(el("div",{sty:{fontSize:"13px",fontWeight:"800",color:active?"#fff":"var(--text)"}},t.lbl));
-      if(active) b.appendChild(el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.7)"}},"✓ محدد"));
-      thRow.appendChild(b);
-    })(themes[i]);
+  var swatchWrap=el("div",{sty:{display:"flex",flexWrap:"wrap"}});
+  var swatchBtns=[];
+  for(var i=0;i<THEME_COLORS.length;i++){
+    (function(c){
+      var active=S.themeColor===c;
+      var b=el("button",{sty:{
+        width:"38px",height:"38px",borderRadius:"11px",background:c,
+        border:active?"3px solid var(--text)":"3px solid transparent",
+        cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",color:"#fff"
+      },onclick:function(){S.themeColor=c;save();applyTheme();render();}},active?"✓":"");
+      swatchBtns.push(b);swatchWrap.appendChild(b);
+    })(THEME_COLORS[i]);
   }
-  thCard.appendChild(thRow);body.appendChild(thCard);
+  thCard.appendChild(swatchWrap);body.appendChild(thCard);
+
+  // Security
+  body.appendChild(secTitle("الأمان","4px"));
+  var secCard=el("div",{cls:"card card-p"});
+  var secRow=el("div",{sty:{display:"flex",alignItems:"center"}});
+  var secInfo=el("div",{sty:{flex:"1"}});
+  secInfo.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"800",color:"var(--text)"}},"قفل بالرقم السري"));
+  secInfo.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"1px"}},S.pinEnabled?"مُفعّل — يُطلب الرقم عند فتح التطبيق":"غير مُفعّل"));
+  secRow.appendChild(secInfo);
+  secRow.appendChild(switchEl(S.pinEnabled,function(){
+    if(!S.pinEnabled){
+      UI.lockMode="setNew1";UI.lockInput="";UI.lockTemp="";UI.lockPurpose="";UI.locked=true;render();
+    } else {
+      modal("إلغاء القفل؟","سيُطلب منك إدخال الرقم السري الحالي للتأكيد",false,function(){
+        UI.lockMode="disableConfirm";UI.lockInput="";UI.locked=true;render();
+      });
+    }
+  }));
+  secCard.appendChild(secRow);
+  if(S.pinEnabled){
+    secCard.appendChild(el("div",{cls:"divider",sty:{margin:"12px 0"}}));
+    secCard.appendChild(el("button",{cls:"btn btn-ghost",onclick:function(){UI.lockMode="setNew1";UI.lockInput="";UI.lockTemp="";UI.lockPurpose="";UI.locked=true;render();}},"🔑 تغيير الرقم السري"));
+  }
+  body.appendChild(secCard);
 
   // Commitments shortcut
   body.appendChild(secTitle("الالتزامات الثابتة","4px"));
@@ -1424,7 +1768,10 @@ function pageMore(){
       (function(cat,idx){
         var row=el("div",{sty:{display:"flex",alignItems:"center",padding:"12px 16px",borderBottom:idx<cats.length-1?"1px solid var(--border)":"none",cursor:"pointer"},onclick:function(){UI.editCat=Object.assign({},cat);UI.editCatType=type;go("editCat");}});
         row.appendChild(el("div",{sty:{width:"36px",height:"36px",borderRadius:"10px",background:cat.c+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",flexShrink:"0"}},cat.em));
-        row.appendChild(el("div",{sty:{flex:"1",fontSize:"14px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
+        var rinfo=el("div",{sty:{flex:"1"}});
+        rinfo.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"700",color:"var(--text)"}},cat.lbl));
+        if(type==="expense"&&cat.budget>0) rinfo.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"1px"}},"ميزانية: "+fmt(cat.budget)+" "+CUR+"/شهر"));
+        row.appendChild(rinfo);
         row.appendChild(el("span",{sty:{color:"var(--text3)",fontSize:"16px"}},"›"));
         card.appendChild(row);
       })(cats[ci],ci);
@@ -1443,7 +1790,7 @@ function pageMore(){
   var bkCard=el("div",{cls:"card"});
   var rows=[
     {icon:"📊",title:"استيراد Excel",sub:"ملف الميزانية القديم",action:function(){var inp=document.createElement("input");inp.type="file";inp.accept=".xlsx,.xls";inp.onchange=handleXL;inp.click();}},
-    {icon:"📤",title:"تصدير نسخة احتياطية",sub:"ملف JSON",action:exportAll},
+    {icon:"📤",title:"تصدير نسخة احتياطية",sub:S.lastBackup?"آخر تصدير: "+S.lastBackup:"لم تُصدّر بعد",action:function(){exportAll();S.lastBackup=today();S.backupSnooze=null;save();render();}},
     {icon:"📥",title:"استيراد نسخة احتياطية",sub:"ملف JSON",action:function(){var inp=document.createElement("input");inp.type="file";inp.accept=".json";inp.onchange=importJSON;inp.click();}},
   ];
   for(var i=0;i<rows.length;i++){
@@ -1626,7 +1973,7 @@ function pageConfirmXL(){
 //  BACKUP
 // ════════════════════════════════════════════
 function exportAll(){
-  var data=JSON.stringify({_t:"mb2",v:2,d:today(),txs:S.txs,commits:S.commits},null,2);
+  var data=JSON.stringify({_t:"mb2",v:2,d:today(),txs:S.txs,commits:S.commits,expCats:S.expCats,incCats:S.incCats},null,2);
   var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download="ميزانية-البيت-"+today()+".json";a.click();toast("✓ تم التصدير");
 }
 function importJSON(e){
@@ -1635,7 +1982,12 @@ function importJSON(e){
   r.onload=function(ev){
     try{
       var d=JSON.parse(ev.target.result);
-      if(d._t==="mb2"){if(confirm("سيستبدل كل البيانات. متأكد؟")){S.txs=d.txs||[];S.commits=d.commits||[];save();toast("✓ تم الاستيراد");go("home");}}
+      if(d._t==="mb2"){if(confirm("سيستبدل كل البيانات. متأكد؟")){
+        S.txs=d.txs||[];S.commits=d.commits||[];
+        if(d.expCats){S.expCats=d.expCats;EXP_CATS=d.expCats;}
+        if(d.incCats){S.incCats=d.incCats;INC_CATS=d.incCats;}
+        save();toast("✓ تم الاستيراد");go("home");
+      }}
       else toast("الملف غير صحيح");
     }catch(err){toast("خطأ في الملف");}
   };
@@ -1650,7 +2002,7 @@ var CAT_EMOJIS=["🛒","🍽️","💳","👶","🚗","⛽","🏥","🏠","💡"
 function pageEditCat(){
   var isEdit=!!UI.editCat;
   var type=UI.editCatType;
-  var f=isEdit?UI.editCat:{id:"",lbl:"",em:"😊",c:CAT_COLORS[0]};
+  var f=isEdit?UI.editCat:{id:"",lbl:"",em:"😊",c:CAT_COLORS[0],budget:0};
   var curColor=f.c||CAT_COLORS[0];var curEmoji=f.em||"😊";
   var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px",background:"var(--bg)"}});
   var hdr=el("div",{cls:"hdr"});
@@ -1687,11 +2039,22 @@ function pageEditCat(){
     })(CAT_COLORS[i]);
   }
   body.appendChild(colorWrap);
+
+  var budgetInp=null;
+  if(type==="expense"){
+    body.appendChild(secTitle("الميزانية الشهرية (اختياري)","4px"));
+    var bw=el("div",{sty:{position:"relative"}});
+    budgetInp=inpEl({type:"number",step:"0.001",value:f.budget?String(f.budget):"",placeholder:"0.000 — اتركه فارغًا لتجاهل الحد"});
+    bw.appendChild(budgetInp);body.appendChild(bw);
+    body.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"-2px"}},"ستظهر تنبيهات عند الاقتراب من هذا الحد أو تجاوزه"));
+  }
+
   var saveFn=function(){
     var name=ni.value.trim();if(!name){toast("أدخل اسم الفئة");return;}
+    var budget=budgetInp?(parseFloat(budgetInp.value)||0):0;
     var cats=type==="income"?INC_CATS:EXP_CATS;
-    if(isEdit){for(var i=0;i<cats.length;i++){if(cats[i].id===f.id){cats[i]=Object.assign({},cats[i],{lbl:name,em:curEmoji,c:curColor});break;}}}
-    else{cats.push({id:"cat_"+Date.now(),lbl:name,em:curEmoji,c:curColor});}
+    if(isEdit){for(var i=0;i<cats.length;i++){if(cats[i].id===f.id){cats[i]=Object.assign({},cats[i],{lbl:name,em:curEmoji,c:curColor,budget:budget});break;}}}
+    else{var newCat={id:"cat_"+Date.now(),lbl:name,em:curEmoji,c:curColor};if(type==="expense")newCat.budget=budget;cats.push(newCat);}
     if(type==="income"){INC_CATS=cats;S.incCats=cats;}else{EXP_CATS=cats;S.expCats=cats;}
     save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");go("more");
   };
@@ -1761,6 +2124,20 @@ function pageCatDetail(){
 
   var body=el("div",{cls:"content"});
 
+  if(cat.budget>0){
+    var bpct=Math.min(100,(total/cat.budget)*100);
+    var bcolor=bpct>=100?"var(--expense)":bpct>=80?"var(--amber)":cat.c;
+    var budCard=el("div",{cls:"card card-p"});
+    budCard.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",marginBottom:"6px",fontSize:"12px",fontWeight:"700",color:"var(--text2)"}},[
+      el("span",null,"الميزانية الشهرية"),
+      el("span",null,fmt(total)+" / "+fmt(cat.budget)+" "+CUR)
+    ]));
+    var pw=el("div",{cls:"prog"});
+    pw.appendChild(el("div",{cls:"prog-fill",sty:{width:bpct+"%",background:bcolor}}));
+    budCard.appendChild(pw);
+    body.appendChild(budCard);
+  }
+
   if(!txs.length){
     body.appendChild(el("div",{cls:"empty"},[
       el("div",{cls:"empty-icon"},cat.em),
@@ -1802,6 +2179,12 @@ function render(){
   applyTheme();
   var root=document.getElementById("root");
   root.innerHTML="";
+
+  if(UI.locked){
+    root.appendChild(pageLock());
+    return;
+  }
+
   if(!S.onboarded){root.appendChild(pageOnboard());return;}
   var pages={
     home:       pageHome,
