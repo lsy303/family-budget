@@ -372,6 +372,16 @@ tr:last-child td { border-bottom:none; }
 // ════════════════════════════════════════════
 //  CONSTANTS
 // ════════════════════════════════════════════
+var CURRENCIES = [
+  {code:"BHD", lbl:"د.ب", dec:3},
+  {code:"KWD", lbl:"د.ك", dec:3},
+  {code:"OMR", lbl:"ر.ع", dec:3},
+  {code:"SAR", lbl:"ر.س", dec:2},
+  {code:"AED", lbl:"د.إ", dec:2},
+  {code:"QAR", lbl:"ر.ق", dec:2},
+  {code:"EGP", lbl:"ج.م", dec:2},
+  {code:"USD", lbl:"$",   dec:2}
+];
 var CUR = "د.ب";
 var MN  = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 
@@ -429,8 +439,11 @@ var S = {
   pinAHash:   ld("mb_pa",null),
   lastBackup: ld("mb_lb",null),
   backupSnooze: ld("mb_bs",null),
+  currency: ld("mb_cur",null),
 };
 if(!S.themeColor || S.themeColor==="blue" || S.themeColor==="pink"){S.themeColor="#1D6FA4";}
+if(!S.currency || !S.currency.code){ S.currency = CURRENCIES[0]; }
+CUR = S.currency.lbl;
 EXP_CATS = S.expCats ? S.expCats : DEFAULT_EXP_CATS.slice();
 INC_CATS = S.incCats ? S.incCats : DEFAULT_INC_CATS.slice();
 if(!S.expCats){S.expCats=EXP_CATS;}
@@ -449,6 +462,7 @@ function save(){
   sv("mb_pa",S.pinAHash);
   sv("mb_lb",S.lastBackup);
   sv("mb_bs",S.backupSnooze);
+  sv("mb_cur",S.currency);
 }
 
 // ════════════════════════════════════════════
@@ -481,7 +495,9 @@ function pad2(n){n=Number(n);return n<10?"0"+n:String(n);}
 function ymdLocal(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());}
 function ymLocal(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1);}
 function uid(){return "_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);}
-function fmt(n){return Number(n||0).toFixed(3).replace(/\B(?=(\d{3})+(?!\d))/g,",");}
+function fmt(n){var dgt=(S.currency&&S.currency.dec!=null)?S.currency.dec:3;return Number(n||0).toFixed(dgt).replace(/\B(?=(\d{3})+(?!\d))/g,",");}
+function amtStep(){return (S.currency&&S.currency.dec===2)?"0.01":"0.001";}
+function zeroPh(){return (S.currency&&S.currency.dec===2)?"0.00":"0.000";}
 function today(){return ymdLocal(new Date());}
 function cleanN(v){return parseFloat(String(v||0).replace(/,/g,"").replace(/[^0-9.]/g,""))||0;}
 function monthLbl(ym){var p=ym.split("-");return MN[parseInt(p[1])-1]+" "+p[0];}
@@ -1338,7 +1354,7 @@ function pageAETx(type){
 
   body.appendChild(secTitle("المبلغ ("+CUR+")","4px"));
   var amtWrap=el("div",{sty:{position:"relative"}});
-  var amtInp=inpEl({type:"number",step:"0.001",value:isEdit?String(f.amount):"",placeholder:"0.000",cls:"inp inp-big",sty:{paddingLeft:"52px"}});
+  var amtInp=inpEl({type:"number",step:amtStep(),value:isEdit?String(f.amount):"",placeholder:zeroPh(),cls:"inp inp-big",sty:{paddingLeft:"52px"}});
   amtWrap.appendChild(amtInp);
   amtWrap.appendChild(el("span",{sty:{position:"absolute",left:"16px",top:"50%",transform:"translateY(-50%)",fontSize:"13px",color:"var(--text3)",fontWeight:"700",pointerEvents:"none"}},CUR));
   body.appendChild(amtWrap);
@@ -1503,7 +1519,7 @@ function pageAECommit(){
   // Amount
   body.appendChild(secTitle("المبلغ الشهري ("+CUR+")","4px"));
   var aw=el("div",{sty:{position:"relative"}});
-  var ai=inpEl({type:"number",step:"0.001",value:f.amount?String(f.amount):"",placeholder:"0.000",cls:"inp inp-big",sty:{paddingLeft:"52px"}});
+  var ai=inpEl({type:"number",step:amtStep(),value:f.amount?String(f.amount):"",placeholder:zeroPh(),cls:"inp inp-big",sty:{paddingLeft:"52px"}});
   aw.appendChild(ai);
   aw.appendChild(el("span",{sty:{position:"absolute",left:"16px",top:"50%",transform:"translateY(-50%)",fontSize:"13px",color:"var(--text3)",fontWeight:"700",pointerEvents:"none"}},CUR));
   body.appendChild(aw);
@@ -1723,6 +1739,29 @@ function pageMore(){
     })(THEME_COLORS[i]);
   }
   thCard.appendChild(swatchWrap);body.appendChild(thCard);
+
+  // Currency
+  body.appendChild(secTitle("العملة","4px"));
+  var curCard=el("div",{cls:"card card-p"});
+  var curWrap=el("div",{sty:{display:"flex",flexWrap:"wrap"}});
+  for(var i=0;i<CURRENCIES.length;i++){
+    (function(c){
+      var active=S.currency.code===c.code;
+      var b=el("button",{sty:{
+        padding:"10px 16px",borderRadius:"12px",margin:"4px",
+        border:active?"2px solid var(--theme-accent)":"2px solid var(--border)",
+        background:active?"var(--accent-bg)":"var(--surface2)",
+        color:active?"var(--theme-accent)":"var(--text)",
+        fontWeight:"800",fontSize:"14px",cursor:"pointer",fontFamily:"inherit"
+      },onclick:function(){
+        S.currency=c;CUR=c.lbl;save();render();
+      }},c.lbl+"  "+c.code);
+      curWrap.appendChild(b);
+    })(CURRENCIES[i]);
+  }
+  curCard.appendChild(curWrap);
+  curCard.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"8px"}},"يتحكم عدد الخانات العشرية في المبالغ تلقائيًا حسب العملة المختارة"));
+  body.appendChild(curCard);
 
   // Security
   body.appendChild(secTitle("الأمان","4px"));
@@ -2044,7 +2083,7 @@ function pageEditCat(){
   if(type==="expense"){
     body.appendChild(secTitle("الميزانية الشهرية (اختياري)","4px"));
     var bw=el("div",{sty:{position:"relative"}});
-    budgetInp=inpEl({type:"number",step:"0.001",value:f.budget?String(f.budget):"",placeholder:"0.000 — اتركه فارغًا لتجاهل الحد"});
+    budgetInp=inpEl({type:"number",step:amtStep(),value:f.budget?String(f.budget):"",placeholder:zeroPh()+" — اتركه فارغًا لتجاهل الحد"});
     bw.appendChild(budgetInp);body.appendChild(bw);
     body.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"-2px"}},"ستظهر تنبيهات عند الاقتراب من هذا الحد أو تجاوزه"));
   }
