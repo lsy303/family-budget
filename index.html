@@ -213,9 +213,10 @@ select.inp { cursor:pointer; }
   position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-10px);
   background:var(--text); color:#fff; border-radius:12px; padding:10px 20px;
   z-index:500; font-size:13px; font-weight:700; white-space:nowrap;
+  display:flex; align-items:center;
   opacity:0; pointer-events:none; transition:all .25s;
 }
-.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
 
 .overlay {
   position:fixed; inset:0; background:rgba(17,24,39,.5);
@@ -278,21 +279,6 @@ tr:last-child td { border-bottom:none; }
 .alert-msg.warn { color:var(--amber); }
 .alert-msg.over { color:var(--expense); }
 
-/* ── COMMIT BANNER ── */
-.commit-banner {
-  background:linear-gradient(135deg,#7C3AED,#5B21B6);
-  border-radius:var(--r);
-  padding:14px 16px;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  cursor:pointer;
-}
-.commit-banner-info { flex:1; }
-.commit-banner-title { font-size:14px; font-weight:900; color:#fff; margin-bottom:2px; }
-.commit-banner-sub   { font-size:12px; color:rgba(255,255,255,.7); }
-.commit-banner-arrow { font-size:18px; color:rgba(255,255,255,.7); }
-
 /* ── SWITCH ── */
 .switch { position:relative; width:46px; height:26px; border-radius:99px; background:var(--border); flex-shrink:0; transition:background .2s; }
 .switch.on { background:var(--theme-accent); }
@@ -336,20 +322,6 @@ tr:last-child td { border-bottom:none; }
     <div style="display:flex;">
       <button class="btn btn-danger" id="modal-confirm" style="margin-left:10px;">حذف</button>
       <button class="btn btn-ghost"  id="modal-cancel">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<!-- Commitments Apply Sheet -->
-<div class="overlay" id="commit-overlay">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">📋 الالتزامات الشهرية</div>
-    <div id="commit-subtitle" style="font-size:13px;color:var(--text2);margin-bottom:16px;"></div>
-    <div id="commit-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
-    <div style="display:flex;">
-      <button class="btn btn-commit" id="commit-apply-btn">✅ تطبيق الكل</button>
-      <button class="btn btn-ghost" id="commit-skip-btn">تخطي</button>
     </div>
   </div>
 </div>
@@ -591,10 +563,19 @@ function totalCommits(){
 //  TOAST & MODAL
 // ════════════════════════════════════════════
 var _tt;
-function toast(msg){
+function toast(msg,actionLabel,actionFn,duration){
   var t=document.getElementById("toast");
-  t.textContent=msg; t.classList.add("show");
-  clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove("show");},2400);
+  t.innerHTML="";
+  t.appendChild(document.createTextNode(msg));
+  if(actionLabel&&actionFn){
+    var btn=document.createElement("button");
+    btn.textContent=actionLabel;
+    btn.style.cssText="margin-right:12px;background:rgba(255,255,255,.22);color:#fff;font-weight:800;padding:4px 12px;border-radius:8px;font-size:12px;border:none;cursor:pointer;font-family:inherit;";
+    btn.onclick=function(e){e.stopPropagation();clearTimeout(_tt);t.classList.remove("show");actionFn();};
+    t.appendChild(btn);
+  }
+  t.classList.add("show");
+  clearTimeout(_tt); _tt=setTimeout(function(){t.classList.remove("show");},duration||2400);
 }
 function modal(title,body,warn,cb){
   document.getElementById("modal-title").textContent=title;
@@ -608,54 +589,41 @@ document.getElementById("modal-confirm").onclick=function(){if(UI.modalCb){UI.mo
 document.getElementById("modal-cancel").onclick=closeModal;
 document.getElementById("modal-overlay").onclick=function(e){if(e.target.id==="modal-overlay")closeModal();};
 
-// ── Commit sheet
-function openCommitSheet(){
-  var pending=pendingCommits();
-  if(!pending.length)return;
-  var total=0;for(var i=0;i<pending.length;i++)total+=pending[i].amount;
-  document.getElementById("commit-subtitle").textContent=
-    pending.length+" التزام بإجمالي "+fmt(total)+" "+CUR;
-  var list=document.getElementById("commit-list");
-  list.innerHTML="";
-  for(var i=0;i<pending.length;i++){
-    (function(c){
-      var cat=getCat("expense",c.catId);
-      var row=document.createElement("div");
-      row.style.cssText="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border-radius:12px;border-right:3px solid "+cat.c;
-      var icon=document.createElement("div");
-      icon.style.cssText="font-size:22px;flex-shrink:0;";icon.textContent=c.emoji||"💳";
-      var info=document.createElement("div");info.style.cssText="flex:1;min-width:0;";
-      var nm=document.createElement("div");nm.style.cssText="font-size:14px;font-weight:800;color:var(--text);";nm.textContent=c.name;
-      var sub=document.createElement("div");sub.style.cssText="font-size:11px;color:var(--text3);margin-top:2px;";sub.textContent=cat.em+" "+cat.lbl;
-      info.appendChild(nm);info.appendChild(sub);
-      var amt=document.createElement("div");amt.style.cssText="font-size:15px;font-weight:900;color:"+cat.c+";flex-shrink:0;";amt.textContent=fmt(c.amount)+" "+CUR;
-      row.appendChild(icon);row.appendChild(info);row.appendChild(amt);
-      list.appendChild(row);
-    })(pending[i]);
-  }
-  document.getElementById("commit-overlay").classList.add("show");
-}
-function closeCommitSheet(){document.getElementById("commit-overlay").classList.remove("show");}
-document.getElementById("commit-apply-btn").onclick=function(){
+// ── Apply a single commitment (each one confirmed independently — they're not all paid at once)
+function applyOneCommit(id){
+  var c=null;
+  for(var j=0;j<S.commits.length;j++){if(S.commits[j].id===id){c=S.commits[j];break;}}
+  if(!c)return;
   var m=thisMonth();
-  var pending=pendingCommits();
-  var ts=Date.now();
-  for(var i=0;i<pending.length;i++){
-    var c=pending[i];
-    S.txs.push({id:"co_"+ts+"_"+i,type:"expense",catId:c.catId,label:c.name,amount:c.amount,date:today(),note:"التزام ثابت",isCommit:true});
-    for(var j=0;j<S.commits.length;j++){
-      if(S.commits[j].id===c.id){
-        var am=S.commits[j].appliedMonths?S.commits[j].appliedMonths.slice():[];
-        am.push(m);
-        S.commits[j].appliedMonths=am;
-        break;
-      }
-    }
+  var txId="co_"+Date.now()+"_"+id;
+  S.txs.push({id:txId,type:"expense",catId:c.catId,label:c.name,amount:c.amount,date:today(),note:"التزام ثابت",isCommit:true});
+  var am=c.appliedMonths?c.appliedMonths.slice():[];
+  am.push(m);
+  c.appliedMonths=am;
+  var at=c.appliedTx?Object.assign({},c.appliedTx):{};
+  at[m]=txId;
+  c.appliedTx=at;
+  save();
+  toast("✅ تم تسجيل "+c.name,"تراجع",function(){undoCommit(id,txId);},4500);
+  render();
+}
+// ── Undo a commitment application (removes its transaction and un-marks the month)
+function undoCommit(commitId,txId){
+  var c=null;
+  for(var j=0;j<S.commits.length;j++){if(S.commits[j].id===commitId){c=S.commits[j];break;}}
+  if(!c)return;
+  var m=thisMonth();
+  if(txId){
+    var newTx=[];for(var i=0;i<S.txs.length;i++)if(S.txs[i].id!==txId)newTx.push(S.txs[i]);
+    S.txs=newTx;
   }
-  save();closeCommitSheet();toast("✅ تم تطبيق "+pending.length+" التزام");render();
-};
-document.getElementById("commit-skip-btn").onclick=closeCommitSheet;
-document.getElementById("commit-overlay").onclick=function(e){if(e.target.id==="commit-overlay")closeCommitSheet();};
+  if(c.appliedMonths){
+    var idx=c.appliedMonths.indexOf(m);
+    if(idx>=0){var am=c.appliedMonths.slice();am.splice(idx,1);c.appliedMonths=am;}
+  }
+  if(c.appliedTx&&c.appliedTx[m]!==undefined){var at2=Object.assign({},c.appliedTx);delete at2[m];c.appliedTx=at2;}
+  save();toast("↩️ تم التراجع عن "+c.name);render();
+}
 
 // ── Backup reminder sheet
 function needsBackupReminder(){
@@ -1070,18 +1038,35 @@ function pageHome(){
     setTimeout(openBackupSheet,400);
   }
 
-  // ── Commitments banner (if pending)
+  // ── Remaining commitments this month — compact horizontal chip strip (each tap applies just that one)
   var pending=pendingCommits();
   if(pending.length){
-    var cb=el("div",{cls:"commit-banner",onclick:openCommitSheet});
-    cb.appendChild(el("div",{sty:{fontSize:"26px",flexShrink:"0"}},"📋"));
-    var ci=el("div",{cls:"commit-banner-info"});
-    ci.appendChild(el("div",{cls:"commit-banner-title"},"لديك "+pending.length+" التزام شهري"));
     var pt=0;for(var i=0;i<pending.length;i++)pt+=pending[i].amount;
-    ci.appendChild(el("div",{cls:"commit-banner-sub"},"إجمالي "+fmt(pt)+" "+CUR+" — اضغط للتطبيق"));
-    cb.appendChild(ci);
-    cb.appendChild(el("div",{cls:"commit-banner-arrow"},"←"));
-    body.appendChild(cb);
+    var pcWrap=el("div",{cls:"card card-p",sty:{paddingBottom:"12px"}});
+    var pcHead=el("div",{sty:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px"}});
+    pcHead.appendChild(el("div",{sty:{fontSize:"12px",fontWeight:"800",color:"var(--text2)"}},"📋 التزامات متبقية"));
+    pcHead.appendChild(el("span",{sty:{fontSize:"11px",fontWeight:"800",color:"var(--commit)"}},pending.length+" · "+fmt(pt)+" "+CUR));
+    pcWrap.appendChild(pcHead);
+    var chipRow=el("div",{sty:{display:"flex",overflowX:"auto",paddingBottom:"2px",WebkitOverflowScrolling:"touch",scrollSnapType:"x proximity",touchAction:"pan-x"}});
+    for(var i=0;i<pending.length;i++){
+      (function(c){
+        var chip=el("button",{sty:{
+          flexShrink:"0",display:"flex",alignItems:"center",
+          padding:"8px 12px",borderRadius:"20px",marginRight:"8px",
+          border:"1.5px solid var(--commit-bg)",background:"var(--commit-bg)",
+          color:"var(--commit)",fontSize:"12px",fontWeight:"800",
+          cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+          scrollSnapAlign:"start"
+        },onclick:function(){applyOneCommit(c.id);}},
+        (c.emoji||"📋")+" "+c.name+" · "+fmt(c.amount)+" ✓");
+        chipRow.appendChild(chip);
+      })(pending[i]);
+    }
+    pcWrap.appendChild(chipRow);
+    if(pending.length>2){
+      pcWrap.appendChild(el("div",{sty:{fontSize:"10px",color:"var(--text3)",marginTop:"6px",textAlign:"center"}},"← مرر لعرض باقي الالتزامات"));
+    }
+    body.appendChild(pcWrap);
   }
 
   // ── Alerts
@@ -1441,7 +1426,23 @@ function pageCommits(){
         info.appendChild(el("div",{cls:"tx-name"},c.name));
         info.appendChild(el("div",{cls:"tx-sub"},cat.em+" "+cat.lbl+"  ·  "+(applied?"✅ طُبّق هذا الشهر":"⏳ لم يُطبَّق بعد")));
         row.appendChild(info);
-        row.appendChild(el("div",{sty:{fontSize:"15px",fontWeight:"900",color:cat.c,flexShrink:"0"}},fmt(c.amount)+" "+CUR));
+        var right=el("div",{sty:{display:"flex",flexDirection:"column",alignItems:"flex-end",flexShrink:"0"}});
+        right.appendChild(el("div",{sty:{fontSize:"15px",fontWeight:"900",color:cat.c}},fmt(c.amount)+" "+CUR));
+        if(!applied){
+          right.appendChild(el("button",{cls:"btn btn-commit",sty:{width:"auto",padding:"6px 14px",fontSize:"11px",marginTop:"6px"},
+            onclick:function(e){e.stopPropagation();applyOneCommit(c.id);}},"✓ دفعت"));
+        } else {
+          right.appendChild(el("button",{cls:"btn btn-ghost",sty:{width:"auto",padding:"6px 14px",fontSize:"11px",marginTop:"6px"},
+            onclick:function(e){
+              e.stopPropagation();
+              modal("تراجع عن هذا الالتزام؟","بيُحذف من معاملات هذا الشهر",false,function(){
+                var mm=thisMonth();
+                var txId=(c.appliedTx&&c.appliedTx[mm]!==undefined)?c.appliedTx[mm]:null;
+                undoCommit(c.id,txId);
+              });
+            }},"↩ تراجع"));
+        }
+        row.appendChild(right);
         card.appendChild(row);
       })(S.commits[i],i);
     }
@@ -1453,7 +1454,7 @@ function pageCommits(){
 
     var pending=pendingCommits();
     if(pending.length){
-      body.appendChild(el("button",{cls:"btn btn-commit",onclick:openCommitSheet},"📋 تطبيق "+pending.length+" التزام هذا الشهر"));
+      body.appendChild(el("div",{sty:{fontSize:"12px",color:"var(--text3)",textAlign:"center"}},"اضغط \"✓ دفعت\" على كل التزام لحاله وقت ما تدفعه"));
     } else {
       body.appendChild(el("div",{sty:{background:"var(--income-bg)",border:"1.5px solid #6EE7B7",borderRadius:"var(--r)",padding:"13px 16px",textAlign:"center",fontSize:"13px",fontWeight:"700",color:"var(--income)"}},"✅ تم تطبيق جميع الالتزامات هذا الشهر"));
     }
