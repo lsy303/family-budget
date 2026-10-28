@@ -1,0 +1,16 @@
+{
+  "name": "ميزانية البيت",
+  "short_name": "ميزانية البيت",
+  "description": "إدارة ميزانية الأسرة — بياناتك مشفّرة في جهازك",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7F8FA",
+  "theme_color": "#1D6FA4",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
