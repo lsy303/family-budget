@@ -8,7 +8,7 @@
 (function(){
 "use strict";
 
-var APP_VERSION = "25.3";
+var APP_VERSION = "25.4";
 var CURRENCIES = [
   {code:"BHD", lbl:"د.ب", dec:3},{code:"KWD", lbl:"د.ك", dec:3},{code:"OMR", lbl:"ر.ع", dec:3},
   {code:"SAR", lbl:"ر.س", dec:2},{code:"AED", lbl:"د.إ", dec:2},{code:"QAR", lbl:"ر.ق", dec:2},
@@ -135,6 +135,7 @@ function clearLegacy(){var k=["mb_tx","mb_on","mb_th","mb_ec","mb_ic","mb_co","m
 /* forward-only data upgrades — every future format change goes here */
 function migrate(st){
   if(!st.v||st.v<3){ normCats(st.expCats); if(!st.currency||!st.currency.code) st.currency=CURRENCIES[0]; }
+  if(!st.debts) st.debts=[];
   st.v=DATA_VERSION;
   return st;
 }
@@ -824,6 +825,15 @@ function pageHome(){
     el("button",{cls:"quick-btn quick-exp",onclick:function(){UI.editTx=null;go("addExp");}},"💸 إضافة مصروف")
   ]));
 
+  /* debts summary */
+  var dtH=debtTotals();
+  if(dtH.open){
+    body.appendChild(el("div",{cls:"card",sty:{cursor:"pointer"},onclick:function(){go("debts");}},[el("div",{cls:"tx-row"},[
+      el("div",{cls:"tx-icon",sty:{background:"var(--surface2)"}},"🤝"),
+      el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},"الديون"),el("div",{cls:"tx-sub",sty:dtH.overdue?{color:"var(--expense)",fontWeight:"700"}:null},dtH.overdue?("⚠️ "+dtH.overdue+" متأخر عن الاستحقاق"):(dtH.open+" دين مفتوح"))]),
+      el("div",{sty:{textAlign:"left",fontSize:"12px",fontWeight:"800",lineHeight:"1.6"}},[el("div",{sty:{color:"var(--income)"}},"لك "+fmt(dtH.inn)),el("div",{sty:{color:"var(--expense)"}},"عليك "+fmt(dtH.out))])
+    ])]));
+  }
   if(capRows.length){
     body.appendChild(secTitle("حدود الإنفاق"));
     body.appendChild(el("div",{cls:"card card-p"},[capBars(capRows)]));
@@ -1080,6 +1090,227 @@ function pageAECommit(){
 }
 
 /* ═══════════════ PAGE: REPORT ═══════════════ */
+/* ═══════════════ DEBTS (لي / علي) ═══════════════
+   d = {id, dir:"in"(لي عند الناس)|"out"(علي للناس), name, amount, date, due, note,
+        pays:[{id,amount,date,txId}], link:bool, txId, closed:bool}
+   link=true → creating the debt records a tx (lend=expense, borrow=income),
+               every payment records the opposite tx. Deleting removes them. */
+function debtPaid(d){var s=0,p=d.pays||[];for(var i=0;i<p.length;i++)s+=p[i].amount;return s;}
+function debtLeft(d){return Math.max(0,Math.round((d.amount-debtPaid(d))*1000)/1000);}
+function debtOverdue(d){return !d.closed&&d.due&&d.due<today()&&debtLeft(d)>0;}
+function debtTotals(){
+  var r={inn:0,out:0,overdue:0,open:0};
+  for(var i=0;i<S.debts.length;i++){var d=S.debts[i];if(d.closed)continue;r.open++;
+    if(d.dir==="in")r.inn+=debtLeft(d);else r.out+=debtLeft(d);if(debtOverdue(d))r.overdue++;}
+  return r;
+}
+function findDebt(id){for(var i=0;i<S.debts.length;i++)if(S.debts[i].id===id)return S.debts[i];return null;}
+function debtCat(type){
+  if(type==="expense")return getCat("expense","debt").id==="debt"?"debt":EXP_CATS[EXP_CATS.length-1].id;
+  return INC_CATS[INC_CATS.length-1].id;
+}
+function linkTx(id,type,amount,date,label){
+  var t=null;for(var i=0;i<S.txs.length;i++)if(S.txs[i].id===id){t=S.txs[i];break;}
+  if(!t){t={id:id,type:type,catId:debtCat(type),note:"دين"};S.txs.push(t);}
+  t.amount=amount;t.date=date;t.label=label;t.type=type;
+}
+function unlinkTx(id){if(!id)return;S.txs=S.txs.filter(function(t){return t.id!==id;});}
+/* lend(in)=money leaves me → expense; borrow(out)=money comes in → income. Payments are the reverse. */
+function debtOpenType(d){return d.dir==="in"?"expense":"income";}
+function debtPayType(d){return d.dir==="in"?"income":"expense";}
+function syncDebtLinks(d){
+  if(d.link){
+    if(!d.txId)d.txId="dbt_"+d.id;
+    linkTx(d.txId,debtOpenType(d),d.amount,d.date,(d.dir==="in"?"سلفة لـ ":"سلفة من ")+d.name);
+    for(var i=0;i<(d.pays||[]).length;i++){var p=d.pays[i];if(!p.txId)p.txId="dbp_"+p.id;
+      linkTx(p.txId,debtPayType(d),p.amount,p.date,(d.dir==="in"?"سداد من ":"سداد لـ ")+d.name);}
+  } else {
+    unlinkTx(d.txId);d.txId=null;
+    for(var j=0;j<(d.pays||[]).length;j++){unlinkTx(d.pays[j].txId);d.pays[j].txId=null;}
+  }
+}
+function debtRow(d,last){
+  var left=debtLeft(d),pct=d.amount>0?Math.min(100,debtPaid(d)/d.amount*100):0,col=d.dir==="in"?"var(--income)":"var(--expense)";
+  var sub=d.closed?"✅ مسدّد"+(d.closedAt?" · "+dsLbl(d.closedAt):""):(debtOverdue(d)?"⚠️ متأخر — الاستحقاق "+dsLbl(d.due):d.due?"الاستحقاق "+dsLbl(d.due):"منذ "+dsLbl(d.date));
+  var info=el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},d.name),el("div",{cls:"tx-sub",sty:debtOverdue(d)?{color:"var(--expense)",fontWeight:"700"}:null},sub)]);
+  if(!d.closed&&debtPaid(d)>0) info.appendChild(el("div",{cls:"bar-track",sty:{height:"5px",marginTop:"5px"}},[el("div",{cls:"bar-fill",sty:{width:pct+"%",background:col}})]));
+  return el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:last?"none":"1px solid var(--border)",opacity:d.closed?".6":"1"},onclick:function(){UI.debtId=d.id;go("debtDetail");}},[
+    el("div",{cls:"tx-icon",sty:{background:d.dir==="in"?"var(--income-bg)":"var(--expense-bg)"}},d.dir==="in"?"💚":"❤️"),
+    info,
+    el("div",{sty:{textAlign:"left",flexShrink:"0"}},[
+      el("div",{cls:"tx-amt",sty:{color:d.closed?"var(--text3)":col}},fmt(d.closed?d.amount:left)),
+      (!d.closed&&debtPaid(d)>0)?el("div",{sty:{fontSize:"10px",color:"var(--text3)"}},"من "+fmt(d.amount)):null
+    ])
+  ]);
+}
+function pageDebts(){
+  var dir=UI.debtTab||"in",tot=debtTotals(),net=tot.inn-tot.out;
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"100px"}}),hdr=hdrBar("الديون","more");
+  var sr=el("div",{cls:"stats-row",sty:{marginTop:"14px"}});
+  function hs(l,v,c){return el("div",{sty:{background:"rgba(255,255,255,.14)",borderRadius:"12px",padding:"10px 8px",textAlign:"center"}},[el("div",{sty:{fontSize:"10px",color:"rgba(255,255,255,.75)",fontWeight:"700"}},l),el("div",{sty:{fontSize:"15px",fontWeight:"900",color:c}},fmt(v))]);}
+  sr.appendChild(hs("💚 لي عند الناس",tot.inn,"#6EE7B7"));sr.appendChild(hs("❤️ علي للناس",tot.out,"#FCA5A5"));
+  sr.appendChild(hs(net>=0?"الصافي لي":"الصافي علي",Math.abs(net),"#fff"));
+  hdr.appendChild(sr);page.appendChild(hdr);
+  var body=el("div",{cls:"content"});
+  var seg=el("div",{cls:"seg"}),tabs=[["in","💚 لي عند الناس"],["out","❤️ علي للناس"]];
+  function odCount(dd){var c=0;for(var z=0;z<S.debts.length;z++)if(S.debts[z].dir===dd&&debtOverdue(S.debts[z]))c++;return c;}
+  for(var i=0;i<tabs.length;i++){(function(t){seg.appendChild(el("button",{cls:dir===t[0]?"on":"",onclick:function(){UI.debtTab=t[0];render();}},t[1]+(odCount(t[0])?" ⚠️":"")));})(tabs[i]);}
+  body.appendChild(seg);
+  body.appendChild(el("div",{sty:{fontSize:"12px",color:"var(--text3)",textAlign:"center",marginTop:"6px"}},dir==="in"?"فلوس أقرضتها وتنتظر ترجع (أنت الدائن)":"فلوس استلفتها ولازم ترجّعها (أنت المدين)"));
+  var odHere=odCount(dir);
+  if(odHere) body.appendChild(banner("over",dir==="in"?"⚠️ "+odHere+" دين لك تأخّر سداده عن موعده":"⚠️ عليك "+odHere+" دين فات موعد سداده"));
+  var list=S.debts.filter(function(d){return d.dir===dir;});
+  var open=list.filter(function(d){return !d.closed;}).sort(function(a,b){var ao=debtOverdue(a)?0:1,bo=debtOverdue(b)?0:1;if(ao!==bo)return ao-bo;var ad=a.due||"9",bd=b.due||"9";return ad<bd?-1:ad>bd?1:(a.date<b.date?1:-1);});
+  var done=list.filter(function(d){return d.closed;}).sort(function(a,b){return (a.closedAt||"")<(b.closedAt||"")?1:-1;});
+  if(!open.length&&!done.length){
+    body.appendChild(el("div",{cls:"empty"},[el("div",{cls:"empty-icon"},dir==="in"?"💚":"❤️"),el("div",{cls:"empty-title"},dir==="in"?"لا أحد عليه فلوس لك":"ما عليك ديون"),el("div",{cls:"empty-body"},"اضغط الزر أسفل لإضافة دين")]));
+  }
+  if(open.length){
+    var oc=el("div",{cls:"card"});for(var j=0;j<open.length;j++)oc.appendChild(debtRow(open[j],j===open.length-1));
+    body.appendChild(secTitle("قائمة ("+open.length+")"));body.appendChild(oc);
+  }
+  /* per-person net when a name appears more than once */
+  var per={},names=[];
+  for(var k=0;k<S.debts.length;k++){var d=S.debts[k];if(d.closed)continue;var key=d.name.trim();
+    if(!per[key]){per[key]={n:0,v:0};names.push(key);}per[key].n++;per[key].v+=(d.dir==="in"?1:-1)*debtLeft(d);}
+  var multi=names.filter(function(n){return per[n].n>1;});
+  if(multi.length){
+    body.appendChild(secTitle("الصافي حسب الشخص"));var pc=el("div",{cls:"card"});
+    for(var m=0;m<multi.length;m++){var v=per[multi[m]].v;
+      pc.appendChild(el("div",{cls:"kv"},[el("span",{cls:"kv-k"},multi[m]),el("span",{cls:"kv-v",sty:{color:v>=0?"var(--income)":"var(--expense)"}},(v>=0?"لك ":"عليك ")+fmt(Math.abs(v)))]));}
+    body.appendChild(pc);
+  }
+  if(done.length){
+    var show=!!UI.showSettled;
+    body.appendChild(el("button",{cls:"link-btn",sty:{textAlign:"right"},onclick:function(){UI.showSettled=!show;render();}},(show?"▾ ":"▸ ")+"المسدّدة ("+done.length+")"));
+    if(show){var dc=el("div",{cls:"card"});for(var q=0;q<done.length;q++)dc.appendChild(debtRow(done[q],q===done.length-1));body.appendChild(dc);}
+  }
+  page.appendChild(body);
+  page.appendChild(el("button",{cls:"btn",sty:{position:"fixed",bottom:"calc(20px + env(safe-area-inset-bottom))",left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:"398px",background:dir==="in"?"var(--income)":"var(--expense)",boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:"50"},
+    onclick:function(){UI.debtId=null;go("editDebt");}},dir==="in"?"＋ دين لي عند شخص":"＋ دين علي لشخص"));
+  return page;
+}
+function pageEditDebt(){
+  var isEdit=!!UI.debtId,d=isEdit?findDebt(UI.debtId):null;
+  if(isEdit&&!d){UI.view="debts";return pageDebts();}
+  var dir=isEdit?d.dir:(UI.debtTab||"in");
+  var f=d||{name:"",amount:"",date:today(),due:"",note:"",link:false};
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px"}});
+  page.appendChild(hdrBar(isEdit?"تعديل الدين":(dir==="in"?"دين لي عند شخص":"دين علي لشخص"),isEdit?"debtDetail":"debts"));
+  var body=el("div",{cls:"content"});
+  var curDir=dir,seg=null;
+  if(!isEdit){
+    seg=el("div",{cls:"seg"});
+    var opts=[["in","💚 لي عنده"],["out","❤️ علي له"]];
+    for(var i=0;i<opts.length;i++){(function(o){seg.appendChild(el("button",{cls:curDir===o[0]?"on":"",onclick:function(){curDir=o[0];var b=seg.childNodes;for(var j=0;j<b.length;j++)b[j].className=opts[j][0]===curDir?"on":"";linkLbl.textContent=linkText();}},o[1]));})(opts[i]);}
+    body.appendChild(seg);
+  }
+  body.appendChild(secTitle("اسم الشخص"));
+  var names={},dl=el("datalist",{id:"debt-names"});
+  for(var n=0;n<S.debts.length;n++)names[S.debts[n].name]=1;
+  var nk=Object.keys(names);for(var x=0;x<nk.length;x++)dl.appendChild(el("option",{value:nk[x]}));
+  var ni=inpEl({value:f.name,placeholder:"مثال: أحمد",list:"debt-names",autocomplete:"off"});
+  body.appendChild(ni);body.appendChild(dl);
+  body.appendChild(secTitle("المبلغ ("+CUR+")"));
+  var amt=amountField(f.amount);body.appendChild(amt.wrap);
+  if(!isEdit) UI.focusEl=ni;
+  body.appendChild(secTitle("تاريخ الدين"));
+  var dt=inpEl({type:"date",value:f.date||today()});body.appendChild(dt);
+  body.appendChild(secTitle("تاريخ الاستحقاق (اختياري)"));
+  var due=inpEl({type:"date",value:f.due||""});body.appendChild(due);
+  body.appendChild(secTitle("ملاحظة (اختياري)"));
+  var note=inpEl({value:f.note||"",placeholder:"مثال: لشراء جوال"});body.appendChild(note);
+  /* optional link to budget */
+  var linkOn=!!f.link;
+  function linkText(){return curDir==="in"?"سجّله كمصروف في الميزانية، والسداد كدخل":"سجّله كدخل في الميزانية، والسداد كمصروف";}
+  var chk=el("span",{sty:{fontSize:"20px",marginLeft:"10px"}},linkOn?"☑️":"⬜");
+  var linkLbl=el("span",null,linkText());
+  body.appendChild(el("button",{cls:"card card-p",sty:{display:"flex",alignItems:"center",textAlign:"right",width:"100%",fontSize:"13px",fontWeight:"700",color:"var(--text)"},onclick:function(){linkOn=!linkOn;chk.textContent=linkOn?"☑️":"⬜";}},[chk,el("div",null,[linkLbl,el("div",{sty:{fontSize:"11px",color:"var(--text3)",fontWeight:"600",marginTop:"2px"}},"اختياري — اتركه فارغاً إذا تبغى الديون منفصلة عن الرصيد")])]));
+  body.appendChild(el("button",{cls:"btn",sty:{background:curDir==="in"?"var(--income)":"var(--expense)"},onclick:function(){
+    var name=ni.value.trim();if(!name){toast("اكتب اسم الشخص");ni.focus();return;}
+    var a=parseFloat(amt.inp.value);if(!a||a<=0){toast("أدخل مبلغاً صحيحاً");return;}
+    if(isEdit&&a<debtPaid(d)){toast("المبلغ أقل من المسدّد ("+fmt(debtPaid(d))+")");return;}
+    var obj=d||{id:uid().slice(1),dir:curDir,pays:[],closed:false};
+    obj.name=name;obj.amount=a;obj.date=dt.value||today();obj.due=due.value||"";obj.note=note.value.trim();obj.link=linkOn;
+    obj.closed=debtLeft(obj)<=0;if(obj.closed&&!obj.closedAt)obj.closedAt=today();if(!obj.closed)obj.closedAt=null;
+    if(!d)S.debts.push(obj);
+    syncDebtLinks(obj);save();toast(isEdit?"✓ تم الحفظ":"✓ تمت الإضافة");
+    UI.debtTab=obj.dir;
+    if(isEdit){go("debtDetail");}else go("debts");
+  }},isEdit?"💾 حفظ":"✅ إضافة"));
+  page.appendChild(body);return page;
+}
+function pageDebtDetail(){
+  var d=findDebt(UI.debtId);if(!d){UI.view="debts";return pageDebts();}
+  var paid=debtPaid(d),left=debtLeft(d),pct=d.amount>0?Math.min(100,paid/d.amount*100):0,col=d.dir==="in"?"var(--income)":"var(--expense)";
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px"}}),hdr=hdrBar(d.name,"debts");
+  hdr.appendChild(el("div",{sty:{marginTop:"14px",textAlign:"center"}},[
+    el("div",{sty:{fontSize:"12px",color:"rgba(255,255,255,.75)",fontWeight:"700"}},d.closed?"✅ تم السداد بالكامل":(d.dir==="in"?"💚 المتبقي لك عنده":"❤️ المتبقي عليك له")),
+    el("div",{sty:{fontSize:"32px",fontWeight:"900",color:"#fff"}},fmt(d.closed?d.amount:left)+" "+CUR),
+    el("div",{cls:"scale-bar-wrap"},[el("div",{cls:"scale-bar-fill",sty:{width:pct+"%",background:"#6EE7B7"}})]),
+    el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.7)",marginTop:"6px",fontWeight:"700"}},"مسدّد "+fmt(paid)+" من "+fmt(d.amount))
+  ]));
+  page.appendChild(hdr);
+  var body=el("div",{cls:"content"}),info=el("div",{cls:"card"});
+  function kv(k,v,c){info.appendChild(el("div",{cls:"kv"},[el("span",{cls:"kv-k"},k),el("span",{cls:"kv-v",sty:c?{color:c}:null},v)]));}
+  kv("النوع",d.dir==="in"?"💚 لي عنده":"❤️ علي له");
+  kv("تاريخ الدين",dsLbl(d.date)+" "+d.date.slice(0,4));
+  if(d.due) kv("الاستحقاق",dsLbl(d.due)+" "+d.due.slice(0,4)+(debtOverdue(d)?" ⚠️ متأخر":""),debtOverdue(d)?"var(--expense)":null);
+  if(d.note) kv("ملاحظة",d.note);
+  kv("مربوط بالميزانية",d.link?"نعم":"لا");
+  body.appendChild(info);
+  if(!d.closed){
+    body.appendChild(el("div",{cls:"btn-row"},[
+      el("button",{cls:"btn",sty:{background:col},onclick:function(){
+        askSheet({title:d.dir==="in"?"💵 استلمت دفعة":"💵 دفعت دفعة",sub:"المتبقي: "+fmt(left)+" "+CUR,
+          fields:[{type:"number",placeholder:"المبلغ",value:""},{type:"date",value:today()}],okLbl:"تسجيل",
+          onOk:function(v,close,err){
+            var a=parseFloat(v[0]);if(!a||a<=0){err("أدخل مبلغاً صحيحاً");return;}
+            if(a>left+0.0005){err("أكبر من المتبقي ("+fmt(left)+")");return;}
+            d.pays=d.pays||[];d.pays.push({id:uid().slice(1),amount:a,date:v[1]||today()});
+            if(debtLeft(d)<=0){d.closed=true;d.closedAt=v[1]||today();}
+            syncDebtLinks(d);save();close();toast(d.closed?"🎉 تم السداد بالكامل":"✓ تم تسجيل الدفعة");render();
+          }});
+      }},"💵 تسجيل دفعة"),
+      el("button",{cls:"btn btn-ghost",onclick:function(){
+        modal("تسوية كاملة؟","سيُسجَّل المتبقي ("+fmt(left)+" "+CUR+") كدفعة أخيرة اليوم.",false,function(){
+          d.pays=d.pays||[];d.pays.push({id:uid().slice(1),amount:left,date:today()});d.closed=true;d.closedAt=today();
+          syncDebtLinks(d);save();toast("🎉 تم السداد بالكامل");render();
+        },"تسوية");
+      }},"✅ تسوية كاملة")
+    ]));
+  }
+  if((d.pays||[]).length){
+    body.appendChild(secTitle("الدفعات ("+d.pays.length+")"));
+    var pc=el("div",{cls:"card"}),ps=d.pays.slice().sort(function(a,b){return a.date<b.date?1:-1;});
+    for(var i=0;i<ps.length;i++){
+      (function(p,last){
+        pc.appendChild(el("div",{cls:"tx-row",sty:{borderBottom:last?"none":"1px solid var(--border)"}},[
+          el("div",{cls:"tx-icon",sty:{background:"var(--surface2)"}},"💵"),
+          el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},fmt(p.amount)+" "+CUR),el("div",{cls:"tx-sub"},dsLbl(p.date)+" "+p.date.slice(0,4))]),
+          el("button",{sty:{color:"var(--text3)",fontSize:"16px",padding:"6px"},onclick:function(){
+            modal("حذف الدفعة؟",fmt(p.amount)+" "+CUR,false,function(){
+              unlinkTx(p.txId);d.pays=d.pays.filter(function(x){return x.id!==p.id;});
+              if(debtLeft(d)>0){d.closed=false;d.closedAt=null;}
+              save();toast("تم الحذف");render();
+            });
+          }},"🗑️")
+        ]));
+      })(ps[i],i===ps.length-1);
+    }
+    body.appendChild(pc);
+  }
+  body.appendChild(el("div",{cls:"btn-row"},[
+    el("button",{cls:"btn btn-ghost",onclick:function(){go("editDebt");}},"✏️ تعديل"),
+    el("button",{cls:"btn btn-danger",onclick:function(){
+      modal("حذف الدين؟",d.name+" — "+fmt(d.amount)+" "+CUR+(d.link?"\nستُحذف معه المعاملات المرتبطة في الميزانية.":""),true,function(){
+        d.link=false;syncDebtLinks(d);S.debts=S.debts.filter(function(x){return x.id!==d.id;});save();toast("تم الحذف");go("debts");
+      });
+    }},"🗑️ حذف")
+  ]));
+  page.appendChild(body);return page;
+}
+
 /* ═══════════════ REPORT CHARTS ═══════════════ */
 var MN_S=["ينا","فبر","مار","أبر","ماي","يون","يول","أغس","سبت","أكت","نوف","ديس"];
 function dsLbl(ds){return parseInt(ds.slice(8),10)+" "+MN[parseInt(ds.slice(5,7),10)-1];}
@@ -1369,6 +1600,8 @@ function pageMore(){
   var st=el("div",{cls:"card"});
   st.appendChild(listBtn("💱","العملة",S.currency.code+" · "+S.currency.lbl,pickCurrency));
   st.appendChild(listBtn("📅","بداية الشهر المالي",cycDay()===1?"يوم 1 (الشهر الميلادي)":"يوم "+cycDay()+" من كل شهر (يوم الراتب)",pickCycleDay));
+  var dtt=debtTotals();
+  st.appendChild(listBtn("🤝","الديون",dtt.open?("لك "+fmt(dtt.inn)+" · عليك "+fmt(dtt.out)):"لي عند الناس وعلي للناس",function(){go("debts");}));
   st.appendChild(listBtn("📋","الالتزامات الثابتة",S.commits.length+" التزام · "+fmt(totalCommits())+" "+CUR+"/شهر",function(){go("commitments");}));
   st.appendChild(listBtn("🏷️","فئات المصروفات وحدودها",EXP_CATS.length+" فئة · "+EXP_CATS.filter(function(c){return c.cap>0;}).length+" بحد شهري",function(){UI.editCatType="expense";go("catList");}));
   st.appendChild(listBtn("🏷️","فئات الدخل",INC_CATS.length+" فئة",function(){UI.editCatType="income";go("catList");}));
@@ -1479,7 +1712,7 @@ function exportBackup(){
     onOk:function(v,close,err){
       if(v[0].length<6){err("6 أحرف على الأقل");return;}
       if(v[0]!==v[1]){err("كلمتا السر غير متطابقتين");return;}
-      var payload={txs:S.txs,commits:S.commits,expCats:EXP_CATS,incCats:INC_CATS};
+      var payload={txs:S.txs,commits:S.commits,debts:S.debts,expCats:EXP_CATS,incCats:INC_CATS};
       wrapWith(v[0],enc.encode(JSON.stringify(payload))).then(function(w){
         downloadText("ميزانية-البيت-"+today()+".json",JSON.stringify({_t:"mb3",v:3,d:today(),salt:w.salt,iv:w.iv,ct:w.ct}));
         S.lastBackup=Date.now();save();close();toast("✓ تم حفظ النسخة");render();
@@ -1488,7 +1721,7 @@ function exportBackup(){
 }
 function applyBackup(p){
   modal("استبدال البيانات الحالية؟","سيتم استبدال كل المعاملات والالتزامات والفئات بمحتوى النسخة.",true,function(){
-    S.txs=p.txs||[];S.commits=p.commits||[];
+    S.txs=p.txs||[];S.commits=p.commits||[];S.debts=p.debts||[];
     if(p.expCats&&p.expCats.length)EXP_CATS=p.expCats;
     if(p.incCats&&p.incCats.length)INC_CATS=p.incCats;
     S.lastBackup=Date.now();save();toast("✓ تم الاسترجاع");go("home");
@@ -1607,7 +1840,8 @@ function render(){
     editTx:function(){return pageAETx(UI.editTx?UI.editTx.type:"expense");},
     report:pageReport,more:pageMore,confirmXL:pageConfirmXL,
     catList:pageCatList,editCat:pageEditCat,
-    commitments:pageCommits,editCommit:pageAECommit,catDetail:pageCatDetail
+    commitments:pageCommits,editCommit:pageAECommit,catDetail:pageCatDetail,
+    debts:pageDebts,editDebt:pageEditDebt,debtDetail:pageDebtDetail
   };
   mount((pages[UI.view]||pageHome)());
 }

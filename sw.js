@@ -1,5 +1,5 @@
 /* ميزانية البيت — Service Worker (لا يخزّن أي بيانات مالية؛ فقط ملفات التطبيق) */
-var CACHE = "mb-v25.3";
+var CACHE = "mb-v25.4";
 var CORE = ["./","index.html","app.js","firebase-config.js","manifest.json",
   "vendor/firebase-app-compat.js","vendor/firebase-auth-compat.js","vendor/firebase-firestore-compat.js",
   "vendor/xlsx.full.min.js","icons/icon-192.png","icons/apple-touch-icon.png"];
