@@ -366,7 +366,6 @@ function suhubMark(){
 function gateWrap(kids){
   var g=el("div",{cls:"gate"},kids);
   g.appendChild(suhubMark());
-  g.appendChild(el("div",{cls:"brand-foot"},"\u200F© سُحُب · LSY  —  v"+APP_VERSION));
   return g;
 }
 function screenLoading(msg){
@@ -1633,7 +1632,7 @@ function pageMore(){
   }));
   body.appendChild(dz);
   body.appendChild(suhubMark());
-  body.appendChild(el("div",{cls:"brand-foot",sty:{textAlign:"center"}},"\u200Fميزانية البيت v"+APP_VERSION+" — © سُحُب · LSY — جميع الحقوق محفوظة"));
+  body.appendChild(el("div",{cls:"brand-foot",sty:{textAlign:"center"}},"\u200F© سُحُب — جميع الحقوق محفوظة"));
   page.appendChild(body);page.appendChild(tabBar());
   return page;
 }
