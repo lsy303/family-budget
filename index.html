@@ -201,6 +201,13 @@ tr:last-child td { border-bottom:none; }
 .ob-dot.active { background:var(--theme-accent); width:24px; }
 .gate-err { color:var(--expense); font-size:13px; font-weight:700; min-height:18px; }
 .brand-foot { font-size:11px; color:var(--text3); margin-top:24px; }
+.suhub-dev { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; font-size:13px; color:var(--text3); margin-top:24px; line-height:1; }
+.suhub-dev img { display:inline-block; vertical-align:middle; height:22px; width:auto; }
+.suhub-dev a { color:#3FA3E8; font-weight:700; text-decoration:none; }
+.suhub-dev + .brand-foot { margin-top:8px; }
+.suhub-dev .lk-d { display:none; }
+:root[data-theme="dark"] .suhub-dev .lk-l { display:none; }
+:root[data-theme="dark"] .suhub-dev .lk-d { display:inline-block; }
 .spinner { width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--theme-accent); border-radius:50%; animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 

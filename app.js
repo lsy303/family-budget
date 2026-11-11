@@ -356,8 +356,16 @@ function infoSheet(title,body){
 }
 
 /* ═══════════════ GATE SCREENS ═══════════════ */
+/* توقيع سُحُب: «تطوير [الشعار] · @Suhub.apps» — الشعار الفاتح أو الأبيض حسب المظهر */
+function suhubMark(){
+  return el("div",{cls:"suhub-dev"},["تطوير ",
+    el("img",{cls:"lk-l",src:"icons/suhub-lockup.png",alt:"سُحُب",height:"22"}),
+    el("img",{cls:"lk-d",src:"icons/suhub-lockup-white.png",alt:"سُحُب",height:"22"}),
+    " · ",el("a",{href:"https://instagram.com/suhub.apps",target:"_blank",rel:"noopener",dir:"ltr"},"@Suhub.apps")]);
+}
 function gateWrap(kids){
   var g=el("div",{cls:"gate"},kids);
+  g.appendChild(suhubMark());
   g.appendChild(el("div",{cls:"brand-foot"},"\u200F© سُحُب · LSY  —  v"+APP_VERSION));
   return g;
 }
@@ -1624,6 +1632,7 @@ function pageMore(){
     modal("تسجيل الخروج؟","بياناتك تبقى مشفّرة في هذا الجهاز وتعود عند الدخول بنفس الحساب.",false,function(){firebase.auth().signOut();},"خروج");
   }));
   body.appendChild(dz);
+  body.appendChild(suhubMark());
   body.appendChild(el("div",{cls:"brand-foot",sty:{textAlign:"center"}},"\u200Fميزانية البيت v"+APP_VERSION+" — © سُحُب · LSY — جميع الحقوق محفوظة"));
   page.appendChild(body);page.appendChild(tabBar());
   return page;
