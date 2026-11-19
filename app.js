@@ -8,7 +8,7 @@
 (function(){
 "use strict";
 
-var APP_VERSION = "25.7";
+var APP_VERSION = "25.8";
 var CURRENCIES = [
   {code:"BHD", lbl:"د.ب", dec:3},{code:"KWD", lbl:"د.ك", dec:3},{code:"OMR", lbl:"ر.ع", dec:3},
   {code:"SAR", lbl:"ر.س", dec:2},{code:"AED", lbl:"د.إ", dec:2},{code:"QAR", lbl:"ر.ق", dec:2},
@@ -136,6 +136,8 @@ function clearLegacy(){var k=["mb_tx","mb_on","mb_th","mb_ec","mb_ic","mb_co","m
 function migrate(st){
   if(!st.v||st.v<3){ normCats(st.expCats); if(!st.currency||!st.currency.code) st.currency=CURRENCIES[0]; }
   if(!st.debts) st.debts=[];
+  if(!st.goals) st.goals=[];
+  if(st.plan===undefined) st.plan=null;
   st.v=DATA_VERSION;
   return st;
 }
@@ -199,14 +201,15 @@ function dataMonths(){
   return Object.keys(m).sort().reverse();
 }
 function monthStats(ym){
-  var inc=0,exp=0,commitExp=0,byEC={},byIC={},txs=[];
+  var inc=0,exp=0,commitExp=0,saveExp=0,byEC={},byIC={},txs=[];
   for(var i=0;i<S.txs.length;i++){
     var t=S.txs[i]; if(periodOf(t.date)!==ym) continue;
     txs.push(t);
+    if(t.fromGoal) continue; /* paid from a savings goal: outside the monthly budget */
     if(t.type==="income"){inc+=t.amount;byIC[t.catId]=(byIC[t.catId]||0)+t.amount;}
-    else{exp+=t.amount;byEC[t.catId]=(byEC[t.catId]||0)+t.amount;if(t.isCommit)commitExp+=t.amount;}
+    else{exp+=t.amount;byEC[t.catId]=(byEC[t.catId]||0)+t.amount;if(t.isCommit)commitExp+=t.amount;else if(t.isSaving)saveExp+=t.amount;}
   }
-  return {inc:inc,exp:exp,commitExp:commitExp,freeExp:exp-commitExp,bal:inc-exp,available:inc-commitExp,txs:txs,byEC:byEC,byIC:byIC};
+  return {inc:inc,exp:exp,commitExp:commitExp,saveExp:saveExp,freeExp:exp-commitExp-saveExp,bal:inc-exp,available:inc-commitExp-saveExp,txs:txs,byEC:byEC,byIC:byIC};
 }
 function pendingCommits(){
   var m=thisMonth(),r=[];
@@ -734,8 +737,8 @@ function txRow(t,isLast){
   var cat=getCat(t.type,t.catId);
   return el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:isLast?"none":"1px solid var(--border)"},onclick:function(){UI.editTx=t;go("editTx");}},[
     el("div",{cls:"tx-icon",sty:{background:cat.c+"18"}},t.isCommit?"📋":cat.em),
-    el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},t.label||cat.lbl),el("div",{cls:"tx-sub"},t.date+(t.isCommit?" · التزام ثابت":t.note?" · "+t.note:""))]),
-    el("div",{cls:"tx-amt",sty:{color:t.type==="income"?"var(--income)":"var(--expense)"}},(t.type==="income"?"+":"-")+fmt(t.amount))
+    el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},t.label||cat.lbl),el("div",{cls:"tx-sub"},t.date+(t.isCommit?" · التزام ثابت":t.isSaving?" · ادخار":t.note?" · "+t.note:""))]),
+    el("div",{cls:"tx-amt",sty:{color:t.type==="income"?"var(--income)":t.fromGoal?"var(--text3)":"var(--expense)"}},(t.type==="income"?"+":"-")+fmt(t.amount))
   ]);
 }
 
@@ -771,7 +774,7 @@ function pageHome(){
   var grid=el("div",{sty:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",alignItems:"center"}});
   function scol(l,v,c){return el("div",{cls:"scale-side",sty:{textAlign:"center",padding:"0 4px"}},[el("div",{cls:"scale-lbl"},l),el("div",{cls:"scale-val "+c},fmt(v))]);}
   grid.appendChild(scol("الدخل",st.inc,"inc"));grid.appendChild(el("div",{cls:"scale-divider"}));
-  grid.appendChild(scol("ثابتة",st.commitExp,"com"));grid.appendChild(el("div",{cls:"scale-divider"}));
+  grid.appendChild(scol(st.saveExp>0?"ثابتة وادخار":"ثابتة",st.commitExp+st.saveExp,"com"));grid.appendChild(el("div",{cls:"scale-divider"}));
   grid.appendChild(scol("متاح",st.available,"inc"));grid.appendChild(el("div",{cls:"scale-divider"}));
   grid.appendChild(scol("مصاريف",st.freeExp,"exp"));
   bc.appendChild(grid);
@@ -802,6 +805,10 @@ function pageHome(){
   if(!tipShown&&S.txs.length&&(Date.now()-(S.lastBackup||S.createdAt||0))>BACKUP_DAYS*864e5){tipShown=true;
     body.appendChild(banner("info","💾 بياناتك محفوظة في هذا الجهاز فقط — خذ نسخة احتياطية الآن",function(){S.lastBackup=Date.now()-(BACKUP_DAYS-3)*864e5;save();render();},exportBackup));
   }
+  /* goals / plan tip (once) */
+  if(!tipShown&&!S.goalTipOff&&!S.goals.length&&!(S.plan&&S.plan.on)&&S.txs.length>=3){tipShown=true;
+    body.appendChild(banner("info","🎯 جديد: أهداف التوفير وخطة الصرف — اعرف كم يمكنك أن تصرف كل يوم وتصل إلى هدفك",function(){S.goalTipOff=true;save();render();},function(){S.goalTipOff=true;save();UI.planBack="home";go("plan");}));
+  }
   /* PIN suggestion */
   if(!tipShown&&VAULT&&VAULT.mode!=="pin"&&!S.pinTipOff&&S.txs.length>=3){
     body.appendChild(banner("info","🔒 فعّل قفل الرمز لحماية بياناتك من أي شخص يمسك جهازك",function(){S.pinTipOff=true;save();render();},enablePinFlow));
@@ -816,6 +823,17 @@ function pageHome(){
       el("div",{sty:{fontSize:"18px",color:"rgba(255,255,255,.7)"}},"←")
     ]));
   }
+  if(ym===thisMonth()&&S.goals.length){
+    var gp=0,gn=0;for(var gi=0;gi<S.goals.length;gi++){var pq=goalPending(S.goals[gi]);if(pq>0){gp+=pq;gn++;}}
+    if(gp>0) body.appendChild(banner("info","🎯 حان موعد التوفير: "+goalsW(gn)+" بإجمالي "+fmt(gp)+" "+CUR+" — اضغط للتحويل",null,function(){UI.goalsBack="home";go("goals");}));
+  }
+  if(ym===thisMonth()&&S.plan&&S.plan.on&&S.goals.some(function(g){return !goalDone(g);})){
+    var pv=prevYm(ym),pst=new Date(periodStartYmd(ym).replace(/-/g,"/")).getTime();
+    if(S.plan.at<pst&&!(S.plan.rev&&S.plan.rev[pv])){
+      var lo=S.plan.spend-monthStats(pv).freeExp;
+      if(lo>=1) body.appendChild(banner("info","🎉 تبقّى لك "+fmt(lo)+" "+CUR+" من خطة "+monthLbl(pv)+" — انقله إلى أحد أهدافك",function(){S.plan.rev=S.plan.rev||{};S.plan.rev[pv]=1;save();render();},function(){leftoverSheet(pv,lo);}));
+    }
+  }
   if(st.inc>0&&st.available>0){
     var p2=(st.freeExp/st.available)*100;
     if(p2>=100) body.appendChild(banner("over","🚨 تجاوزت المبلغ المتاح للإنفاق بـ "+fmt(st.freeExp-st.available)+" "+CUR));
@@ -823,14 +841,17 @@ function pageHome(){
   }
 
   var capRows=capStatus(st);
-  for(var cb=0;cb<capRows.length;cb++){
-    if(capRows[cb].pct>=100) body.appendChild(banner("over","🚨 تجاوزت حد «"+capRows[cb].cat.lbl+"» بـ "+fmt(capRows[cb].spent-capRows[cb].cap)+" "+CUR,null,(function(c){return function(){UI.selectedCat=c;go("catDetail");};})(capRows[cb].cat)));
-  }
+  var overs=capRows.filter(function(x){return x.spent>x.cap+0.0005;});
+  if(overs.length===1) body.appendChild(banner("over","🚨 تجاوزت حد «"+overs[0].cat.lbl+"» بـ "+fmt(overs[0].spent-overs[0].cap)+" "+CUR,null,function(){UI.selectedCat=overs[0].cat;go("catDetail");}));
+  else if(overs.length>1) body.appendChild(banner("over","🚨 تجاوزت حدود "+goalsW(overs.length,"فئة")+": "+overs.map(function(x){return x.cat.lbl;}).join("، ")+" — التفاصيل في «حدود الإنفاق» أدناه"));
 
   body.appendChild(el("div",{cls:"quick-bar"},[
     el("button",{cls:"quick-btn quick-inc",onclick:function(){UI.editTx=null;go("addInc");}},"💰 إضافة دخل"),
     el("button",{cls:"quick-btn quick-exp",onclick:function(){UI.editTx=null;go("addExp");}},"💸 إضافة مصروف")
   ]));
+
+  if(ym===thisMonth()&&S.plan&&S.plan.on) body.appendChild(planHomeCard(st));
+  if(S.goals.length) body.appendChild(goalsHomeCard());
 
   /* debts summary */
   var dtH=debtTotals();
@@ -1025,6 +1046,418 @@ function pageAETx(type){
     }},"🗑️"));
   }
   body.appendChild(row);page.appendChild(body);return page;
+}
+
+/* ═══════════════ SAVINGS GOALS ═══════════════ */
+var GOAL_EMOJIS=["✈️","🏥","🚗","🏠","🎓","💍","🕋","📱","💻","🎁","🛟","🐷"];
+var SAV_CAT={id:"savings",lbl:"ادخار",em:"🐷",c:"#10B981"};
+function ensureSavingsCat(){
+  for(var i=0;i<EXP_CATS.length;i++)if(EXP_CATS[i].id==="savings")return;
+  EXP_CATS.push({id:SAV_CAT.id,lbl:SAV_CAT.lbl,em:SAV_CAT.em,c:SAV_CAT.c});S.expCats=EXP_CATS;
+}
+function goalsW(n,w){ /* Arabic count wording for «هدف» / «فئة» */
+  var f=w==="فئة";
+  return n===1?(f?"فئة واحدة":"هدف واحد"):n===2?(f?"فئتين":"هدفين"):n<=10?n+(f?" فئات":" أهداف"):n+(f?" فئة":" هدفاً");
+}
+function findGoal(id){for(var i=0;i<S.goals.length;i++)if(S.goals[i].id===id)return S.goals[i];return null;}
+function goalTxs(g){return S.txs.filter(function(t){return t.goalId===g.id||t.fromGoal===g.id;});}
+function goalBal(g){
+  var b=g.start||0;
+  for(var i=0;i<S.txs.length;i++){var t=S.txs[i];if(t.isSaving&&t.goalId===g.id)b+=t.amount;else if(t.fromGoal===g.id)b-=t.amount;}
+  return b;
+}
+function goalDepMonth(g,ym){
+  var s=0;for(var i=0;i<S.txs.length;i++){var t=S.txs[i];if(t.isSaving&&t.goalId===g.id&&periodOf(t.date)===ym)s+=t.amount;}return s;
+}
+function ymDiff(a,b){return (parseInt(b.slice(0,4),10)-parseInt(a.slice(0,4),10))*12+parseInt(b.slice(5,7),10)-parseInt(a.slice(5,7),10);}
+function goalMonthsLeft(g){if(!g.due)return 0;return Math.max(1,ymDiff(thisMonth(),g.due)+1);}
+/* money spent on the goal's own purpose counts as progress; withdrawals for anything else must be refilled */
+function goalUsed(g){var u=0;for(var i=0;i<S.txs.length;i++){var t=S.txs[i];if(t.fromGoal===g.id&&t.goalUse)u+=t.amount;}return u;}
+function goalProg(g){return goalBal(g)+goalUsed(g);}
+function goalDone(g){return goalProg(g)>=g.target-0.0005;}
+/* monthly amount: with a due month, spread what was missing at the start of this month over the months left */
+function goalMonthly(g){
+  if(goalDone(g)&&!goalDepMonth(g,thisMonth()))return 0;
+  if(g.due){var need=g.target-(goalProg(g)-goalDepMonth(g,thisMonth()));return need>0?Math.ceil(need/goalMonthsLeft(g)):0;}
+  return g.monthly>0?g.monthly:0;
+}
+function goalPending(g){if(goalDone(g))return 0;return Math.max(0,Math.min(goalMonthly(g)-goalDepMonth(g,thisMonth()),g.target-goalProg(g)));}
+function goalsMonthlyTotal(){var s=0;for(var i=0;i<S.goals.length;i++)s+=goalMonthly(S.goals[i]);return s;}
+function goalDeposit(g,a,d){
+  ensureSavingsCat();
+  S.txs.push({id:uid(),type:"expense",catId:"savings",label:"ادخار: "+g.name,amount:a,date:d||today(),note:"",isSaving:true,goalId:g.id});
+}
+function goalBar(g,h){
+  var pct=g.target>0?Math.min(100,goalProg(g)/g.target*100):0;
+  return el("div",{cls:"bar-track",sty:{height:(h||8)+"px"}},[el("div",{cls:"bar-fill",sty:{width:pct+"%",background:goalDone(g)?"var(--income)":"var(--theme-accent)"}})]);
+}
+function goalMeta(g){
+  if(goalDone(g))return "🎉 تحقّق الهدف";
+  var m=goalMonthly(g),p=[];
+  if(g.due){var p2=g.due.split("-");p.push("حتى "+MN[parseInt(p2[1],10)-1]+" "+p2[0]);}
+  p.push(m>0?fmt(m)+" "+CUR+" شهرياً":"بلا مبلغ شهري");
+  return p.join(" · ");
+}
+function depositSheet(g,amt){
+  askSheet({title:"💰 تحويل إلى «"+g.name+"»",sub:"يُخصم المبلغ من ميزانية هذا الشهر ويُضاف إلى رصيد الهدف.",
+    fields:[{type:"number",placeholder:"المبلغ",value:amt>0?String(amt):""}],okLbl:"تحويل",
+    onOk:function(v,close,err){
+      var a=parseFloat(v[0]);if(!a||a<=0){err("أدخل مبلغاً صحيحاً");return;}
+      goalDeposit(g,a);save();close();toast(goalDone(g)?"🎉 تحقّق هدف «"+g.name+"»":"✓ تم التحويل إلى «"+g.name+"»");render();
+    }});
+}
+function withdrawSheet(g){
+  var bal=goalBal(g),cats=EXP_CATS.filter(function(c){return c.id!=="savings";}),opts=[];
+  for(var i=0;i<cats.length;i++)opts.push(cats[i].em+" "+cats[i].lbl);
+  askSheet({title:"💸 صرفت من «"+g.name+"»",sub:"الرصيد المتاح: "+fmt(bal)+" "+CUR+". يُسجَّل المصروف دون أن يؤثر على ميزانية الشهر.\n• «على الهدف نفسه»: يُحسب تقدّماً نحو الهدف ولا يتغير قسطك الشهري.\n• «سحب لغرض آخر»: يُعوَّض لاحقاً، فيرتفع القسط الشهري قليلاً.",
+    fields:[{type:"select",options:["✅ على الهدف نفسه (مثل حجز للسفر)","↩️ سحب لغرض آخر (سأعوّضه)"],value:"0"},{type:"number",placeholder:"المبلغ",value:""},{type:"select",options:opts,value:"0"},{type:"text",placeholder:"الوصف (اختياري)",value:""}],okLbl:"تسجيل",
+    onOk:function(v,close,err){
+      var use=v[0]==="0",a=parseFloat(v[1]);if(!a||a<=0){err("أدخل مبلغاً صحيحاً");return;}
+      if(a>bal+0.0005){err("أكبر من رصيد الهدف ("+fmt(bal)+")");return;}
+      var c=cats[parseInt(v[2],10)]||cats[0],o={id:uid(),type:"expense",catId:c.id,label:(v[3]||"").trim()||g.name,amount:a,date:today(),note:"من هدف «"+g.name+"»",fromGoal:g.id};
+      if(use)o.goalUse=true;
+      S.txs.push(o);save();close();toast(use?"✓ سُجّل كصرف على الهدف":"✓ سُجّل السحب — سيُضاف إلى قسطك للتعويض");render();
+    }});
+}
+function goalRow(g,last){
+  var bal=goalProg(g),pend=goalPending(g);
+  var info=el("div",{cls:"tx-info"},[
+    el("div",{sty:{display:"flex",justifyContent:"space-between",alignItems:"baseline"}},[
+      el("div",{cls:"tx-name"},g.name),
+      el("div",{sty:{fontSize:"12px",fontWeight:"800",color:"var(--text2)",flexShrink:"0",marginRight:"8px"}},fmt(bal)+" / "+fmt(g.target))]),
+    el("div",{sty:{margin:"6px 0 5px"}},[goalBar(g,7)]),
+    el("div",{cls:"tx-sub"},goalMeta(g))]);
+  if(pend>0) info.appendChild(el("button",{cls:"cat-chip",sty:{margin:"8px 0 0",borderColor:"var(--theme-accent)",color:"var(--text)",background:"var(--accent-bg)"},
+    onclick:function(e){e.stopPropagation();depositSheet(g,pend);}},"💰 تحويل "+fmt(pend)+" لهذا الشهر"));
+  return el("div",{cls:"tx-row",sty:{cursor:"pointer",alignItems:"flex-start",borderBottom:last?"none":"1px solid var(--border)"},onclick:function(){UI.goalId=g.id;go("goalDetail");}},[
+    el("div",{cls:"tx-icon",sty:{background:"var(--surface2)"}},g.em||"🎯"),info]);
+}
+function pageGoals(){
+  var tot=0,tgt=0;for(var i=0;i<S.goals.length;i++){tot+=goalBal(S.goals[i]);tgt+=S.goals[i].target;}
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"100px"}}),hdr=hdrBar("أهداف التوفير",UI.goalsBack||"more");
+  hdr.appendChild(el("div",{sty:{marginTop:"14px",textAlign:"center"}},[
+    el("div",{sty:{fontSize:"12px",color:"rgba(255,255,255,.75)",fontWeight:"700"}},"إجمالي ما ادّخرته"),
+    el("div",{sty:{fontSize:"30px",fontWeight:"900",color:"#fff"}},fmt(tot)+" "+CUR),
+    S.goals.length?el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.7)",fontWeight:"700",marginTop:"2px"}},goalsW(S.goals.length)+" · المطلوب "+fmt(tgt)+" · شهرياً "+fmt(goalsMonthlyTotal())):null,
+    helpLink("goals","كيف تعمل الأهداف؟")]));
+  page.appendChild(hdr);
+  var body=el("div",{cls:"content"});
+  if(!S.goals.length){
+    body.appendChild(el("div",{cls:"empty"},[el("div",{cls:"empty-icon"},"🎯"),el("div",{cls:"empty-title"},"لا توجد أهداف بعد"),
+      el("div",{cls:"empty-body"},"أضف هدفاً مثل السفر أو العلاج أو مبلغ للطوارئ، وحدّد المبلغ والموعد، وسنحسب لك ما تحتاج توفيره كل شهر.")]));
+  } else {
+    var act=S.goals.filter(function(g){return !goalDone(g);}),dn=S.goals.filter(function(g){return goalDone(g);});
+    var pt=0;for(var a=0;a<act.length;a++)pt+=goalPending(act[a]);
+    if(pt>0) body.appendChild(banner("info","💡 حوّل مبالغ هذا الشهر لكل هدف بالضغط على زر «تحويل» — المجموع "+fmt(pt)+" "+CUR));
+    if(act.length){var c1=el("div",{cls:"card"});for(var j=0;j<act.length;j++)c1.appendChild(goalRow(act[j],j===act.length-1));body.appendChild(c1);}
+    if(dn.length){body.appendChild(secTitle("أهداف تحققت ("+dn.length+")"));var c2=el("div",{cls:"card"});for(var k=0;k<dn.length;k++)c2.appendChild(goalRow(dn[k],k===dn.length-1));body.appendChild(c2);}
+  }
+  page.appendChild(body);
+  page.appendChild(el("button",{cls:"btn btn-accent",sty:{position:"fixed",bottom:"calc(20px + env(safe-area-inset-bottom))",left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:"398px"},
+    onclick:function(){UI.goalId=null;go("editGoal");}},"＋ هدف جديد"));
+  return page;
+}
+function pageEditGoal(){
+  var g=UI.goalId?findGoal(UI.goalId):null,isEdit=!!g,f=g||{name:"",em:"✈️",target:"",start:0,due:"",monthly:""};
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px"}});
+  page.appendChild(hdrBar(isEdit?"تعديل الهدف":"هدف جديد",isEdit?"goalDetail":"goals"));
+  var body=el("div",{cls:"content"});
+  body.appendChild(secTitle("اسم الهدف"));
+  var nm=inpEl({value:f.name,placeholder:"مثال: السفر في الصيف"});body.appendChild(nm);
+  body.appendChild(secTitle("الأيقونة"));
+  var em=f.em,eg=el("div",{cls:"wrap-grid"});
+  function paintE(){var ch=eg.childNodes;for(var i=0;i<ch.length;i++){var on=GOAL_EMOJIS[i]===em;ch[i].style.borderColor=on?"var(--theme-accent)":"";ch[i].style.background=on?"var(--accent-bg)":"";}}
+  for(var i=0;i<GOAL_EMOJIS.length;i++){(function(x){eg.appendChild(el("button",{cls:"cat-chip",sty:{fontSize:"20px",padding:"6px 10px"},onclick:function(){em=x;paintE();}},x));})(GOAL_EMOJIS[i]);}
+  paintE();body.appendChild(eg);
+  body.appendChild(secTitle("المبلغ المطلوب ("+CUR+")"));
+  var tg=amountField(f.target);body.appendChild(tg.wrap);
+  body.appendChild(secTitle("الموعد (اختياري)"));
+  var du=inpEl({type:"month",value:f.due||"",min:thisMonth()});body.appendChild(du);
+  body.appendChild(secTitle("مبلغ شهري ثابت (اختياري)"));
+  var mo=amountField(f.monthly>0?f.monthly:"");mo.inp.className="inp";mo.inp.setAttribute("placeholder","يُحسب تلقائياً عند تحديد الموعد");body.appendChild(mo.wrap);
+  body.appendChild(secTitle(isEdit?"رصيد افتتاحي (مدّخر قبل التطبيق)":"مبلغ مدّخر مسبقاً (اختياري)"));
+  var st=amountField(f.start>0?f.start:"");st.inp.className="inp";st.inp.setAttribute("placeholder","0");body.appendChild(st.wrap);
+  var hint=el("div",{cls:"card card-p",sty:{fontSize:"13px",fontWeight:"700",lineHeight:"1.7"}});body.appendChild(hint);
+  function calc(){
+    var t=parseFloat(tg.inp.value)||0,s=parseFloat(st.inp.value)||0,d=du.value,m=parseFloat(mo.inp.value)||0;
+    mo.inp.disabled=!!d;mo.inp.style.opacity=d?".5":"1";
+    var have=s;if(isEdit)have=goalProg(g)-(g.start||0)+s;
+    if(!(t>0)){hint.textContent="💡 أدخل المبلغ المطلوب لنحسب لك القسط الشهري.";return;}
+    if(have>=t){hint.textContent="🎉 المبلغ المدّخر يغطي الهدف بالكامل.";return;}
+    if(d){
+      if(d<thisMonth()){hint.textContent="⚠️ اختر موعداً من هذا الشهر أو بعده.";return;}
+      var n=Math.max(1,ymDiff(thisMonth(),d)+1);
+      hint.textContent="📅 ستحتاج إلى توفير "+fmt(Math.ceil((t-have)/n))+" "+CUR+" شهرياً لمدة "+n+(n===1?" شهر":n===2?" شهرين":n<=10?" أشهر":" شهراً");
+    } else if(m>0){
+      var k=Math.ceil((t-have)/m);hint.textContent="📅 بتوفير "+fmt(m)+" "+CUR+" شهرياً ستصل إلى هدفك خلال "+k+(k===1?" شهر":k===2?" شهرين":k<=10?" أشهر":" شهراً");
+    } else hint.textContent="💡 حدّد موعداً أو مبلغاً شهرياً، أو اتركهما فارغين لتودع متى شئت.";
+  }
+  tg.inp.addEventListener("input",calc);st.inp.addEventListener("input",calc);du.addEventListener("input",calc);du.addEventListener("change",calc);mo.inp.addEventListener("input",calc);calc();
+  var row=el("div",{cls:"btn-row"});
+  row.appendChild(el("button",{cls:"btn btn-accent",onclick:function(){
+    var name=nm.value.trim();if(!name){toast("اكتب اسم الهدف");nm.focus();return;}
+    var t=parseFloat(tg.inp.value);if(!t||t<=0){toast("أدخل المبلغ المطلوب");return;}
+    if(du.value&&du.value<thisMonth()){toast("اختر موعداً من هذا الشهر أو بعده");return;}
+    var obj=g||{id:"g"+uid().slice(1)};
+    obj.name=name;obj.em=em;obj.target=t;obj.start=parseFloat(st.inp.value)||0;obj.due=du.value||"";obj.monthly=du.value?0:(parseFloat(mo.inp.value)||0);
+    if(!g)S.goals.push(obj);
+    ensureSavingsCat();save();toast(isEdit?"✓ تم الحفظ":"✓ تمت إضافة الهدف");UI.goalId=obj.id;go(isEdit?"goalDetail":"goals");
+  }},isEdit?"💾 حفظ":"✅ إضافة الهدف"));
+  body.appendChild(row);page.appendChild(body);return page;
+}
+function pageGoalDetail(){
+  var g=findGoal(UI.goalId);if(!g){UI.view="goals";return pageGoals();}
+  var bal=goalBal(g),prog=goalProg(g),used=goalUsed(g),pct=g.target>0?Math.min(100,prog/g.target*100):0,pend=goalPending(g);
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px"}}),hdr=hdrBar((g.em||"🎯")+" "+g.name,"goals");
+  hdr.appendChild(el("div",{sty:{marginTop:"14px",textAlign:"center"}},[
+    el("div",{sty:{fontSize:"12px",color:"rgba(255,255,255,.75)",fontWeight:"700"}},goalDone(g)?"🎉 تحقّق الهدف":"ما حقّقته من الهدف"),
+    el("div",{sty:{fontSize:"32px",fontWeight:"900",color:"#fff"}},fmt(prog)+" "+CUR),
+    el("div",{cls:"scale-bar-wrap"},[el("div",{cls:"scale-bar-fill",sty:{width:pct+"%",background:"#6EE7B7"}})]),
+    el("div",{sty:{fontSize:"11px",color:"rgba(255,255,255,.7)",marginTop:"6px",fontWeight:"700"}},Math.round(pct)+"% من "+fmt(g.target)+" "+CUR)]));
+  page.appendChild(hdr);
+  var body=el("div",{cls:"content"}),info=el("div",{cls:"card"});
+  function kv(k,v){info.appendChild(el("div",{cls:"kv"},[el("span",{cls:"kv-k"},k),el("span",{cls:"kv-v"},v)]));}
+  kv("المتبقي للهدف",fmt(Math.max(0,g.target-prog))+" "+CUR);
+  kv("الرصيد المتاح",fmt(bal)+" "+CUR);
+  if(used>0) kv("صُرف على الهدف",fmt(used)+" "+CUR);
+  if(g.due){var p2=g.due.split("-");kv("الموعد",MN[parseInt(p2[1],10)-1]+" "+p2[0]+" ("+goalMonthsLeft(g)+" شهر)");}
+  kv("القسط الشهري",goalMonthly(g)>0?fmt(goalMonthly(g))+" "+CUR:"—");
+  kv("حُوّل هذا الشهر",fmt(goalDepMonth(g,thisMonth()))+" "+CUR);
+  body.appendChild(info);
+  body.appendChild(el("div",{cls:"btn-row"},[
+    el("button",{cls:"btn btn-accent",onclick:function(){depositSheet(g,pend);}},pend>0?"💰 تحويل "+fmt(pend):"💰 إيداع"),
+    el("button",{cls:"btn btn-ghost",onclick:function(){if(bal<=0){toast("لا يوجد رصيد في هذا الهدف");return;}withdrawSheet(g);}},"💸 صرفت منه")]));
+  var hs=goalTxs(g).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0;});
+  if(hs.length||g.start>0){
+    body.appendChild(secTitle("السجل"));
+    var hc=el("div",{cls:"card"});
+    for(var i=0;i<hs.length;i++){
+      (function(t,last){
+        var dep=!!t.isSaving;
+        hc.appendChild(el("div",{cls:"tx-row",sty:{cursor:"pointer",borderBottom:last?"none":"1px solid var(--border)"},onclick:function(){UI.editTx=t;go("editTx");}},[
+          el("div",{cls:"tx-icon",sty:{background:dep?"var(--income-bg)":"var(--expense-bg)"}},dep?"💰":getCat("expense",t.catId).em),
+          el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},dep?"تحويل إلى الهدف":t.label||"صرف"),el("div",{cls:"tx-sub"},t.date+(dep?"":t.goalUse?" · على الهدف نفسه":" · سحب لغرض آخر"))]),
+          el("div",{cls:"tx-amt",sty:{color:dep?"var(--income)":"var(--expense)"}},(dep?"+":"−")+fmt(t.amount))]));
+      })(hs[i],i===hs.length-1&&!(g.start>0));
+    }
+    if(g.start>0) hc.appendChild(el("div",{cls:"tx-row"},[el("div",{cls:"tx-icon",sty:{background:"var(--surface2)"}},"🏁"),
+      el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},"رصيد افتتاحي")]),el("div",{cls:"tx-amt",sty:{color:"var(--income)"}},"+"+fmt(g.start))]));
+    body.appendChild(hc);
+  }
+  body.appendChild(el("div",{cls:"btn-row"},[
+    el("button",{cls:"btn btn-ghost",onclick:function(){go("editGoal");}},"✏️ تعديل"),
+    el("button",{cls:"btn btn-danger",onclick:function(){
+      modal("حذف الهدف؟","«"+g.name+"» — تبقى التحويلات والمصروفات المسجّلة في الميزانية كما هي.",true,function(){
+        S.goals=S.goals.filter(function(x){return x.id!==g.id;});save();toast("تم الحذف");go("goals");});
+    }},"🗑️ حذف")]));
+  page.appendChild(body);return page;
+}
+
+/* ═══════════════ SPENDING PLAN (optional) ═══════════════ */
+var PLAN_DEFAULT={groceries:35,food:10,fuel:12,electricity:8,mobile:4,children:10,health:5,shopping:6,entertain:5,other:5};
+function planCats(){return EXP_CATS.filter(function(c){return c.id!=="savings";});}
+function commitsIn(catId){var s=0;for(var i=0;i<S.commits.length;i++)if(S.commits[i].catId===catId)s+=S.commits[i].amount;return s;}
+function periodEnd(){ /* first day of the next financial month (local midnight) */
+  var cur=thisMonth(),y=parseInt(cur.slice(0,4),10),m=parseInt(cur.slice(5,7),10);
+  return new Date(y,m,cycDay());
+}
+function periodStartYmd(ym){var y=parseInt(ym.slice(0,4),10),m=parseInt(ym.slice(5,7),10),d=new Date(y,m-1,cycDay());return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());}
+function prevYm(ym){var y=parseInt(ym.slice(0,4),10),m=parseInt(ym.slice(5,7),10)-1;if(m<1){m=12;y--;}return y+"-"+pad2(m);}
+function daysToNext(){var n=new Date(),t=new Date(n.getFullYear(),n.getMonth(),n.getDate());return Math.max(1,Math.round((periodEnd()-t)/864e5));}
+function planHistory(){
+  var cur=thisMonth(),all=dataMonths(),done=[];
+  for(var i=0;i<all.length;i++)if(all[i]<cur&&monthStats(all[i]).txs.length)done.push(all[i]);
+  done.sort().reverse();var b=done.slice(0,3),by={},inc=0;
+  for(var j=0;j<b.length;j++){var st=monthStats(b[j]);inc+=st.inc;
+    for(var k=0;k<st.txs.length;k++){var t=st.txs[k];if(t.type==="expense"&&!t.isCommit&&!t.isSaving&&!t.fromGoal)by[t.catId]=(by[t.catId]||0)+t.amount;}}
+  if(!b.length){var c=monthStats(cur);inc=c.inc;}
+  var n=Math.max(1,b.length);for(var x in by)if(by.hasOwnProperty(x))by[x]/=n;
+  return {by:by,inc:inc/n,n:b.length};
+}
+function autoAlloc(total){
+  /* with history: give each category its usual spend (scaled down if it does not fit) — any surplus stays unallocated;
+     without history: split the whole amount by suggested shares */
+  var h=planHistory(),cats=planCats(),w={},sum=0,i,r={},hist=true;
+  for(i=0;i<cats.length;i++){var v=h.by[cats[i].id]||0;if(v>0){w[cats[i].id]=v;sum+=v;}}
+  if(!(sum>0)){hist=false;sum=0;for(i=0;i<cats.length;i++){var d=PLAN_DEFAULT[cats[i].id]||0;if(d){w[cats[i].id]=d;sum+=d;}}}
+  if(!(sum>0)||!(total>0))return r;
+  var target=hist?Math.min(total,Math.ceil(sum)):total,used=0,big=null,bv=-1;
+  for(var k in w){if(!w.hasOwnProperty(k))continue;r[k]=hist&&sum<=total?Math.ceil(w[k]):Math.floor(target*w[k]/sum);used+=r[k];if(w[k]>bv){bv=w[k];big=k;}}
+  if(big&&used!==target&&(!hist||sum>total))r[big]=Math.round((r[big]+target-used)*1000)/1000;
+  if(used>total&&big)r[big]=Math.round((r[big]-(used-total))*1000)/1000;
+  return r;
+}
+function pagePlan(){
+  var p=S.plan||{},on=!!p.on,h=planHistory(),cats=planCats();
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"60px"}}),hdr=hdrBar("خطة الصرف",UI.planBack||"more");
+  hdr.appendChild(el("div",{sty:{fontSize:"13px",color:"rgba(255,255,255,.8)",marginTop:"8px",lineHeight:"1.6"}},"أدخل دخلك وأهدافك، وسنوزّع لك المبلغ المتاح على الفئات لتصل إلى نهاية الشهر وقد حقّقت التوفير الذي تريده."));
+  hdr.appendChild(helpLink("plan","كيف تعمل الخطة؟"));
+  page.appendChild(hdr);
+  var body=el("div",{cls:"content"});
+  /* 1 income */
+  body.appendChild(secTitle("١. الدخل الشهري"));
+  var inc=amountField(on?p.income:(h.inc>0?Math.round(h.inc*1000)/1000:""));body.appendChild(inc.wrap);
+  body.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text3)",marginTop:"6px"}},h.inc>0?"اقتراح من دخلك المسجّل"+(h.n>1?" (متوسط آخر "+(h.n===2?"شهرين":h.n+" أشهر")+")":"")+". عدّله إن لزم.":"مجموع كل مصادر دخلك في الشهر."));
+  /* 2 commitments */
+  body.appendChild(secTitle("٢. الالتزامات الثابتة"));
+  var tc=totalCommits();
+  body.appendChild(el("div",{cls:"card"},[listBtn("📋",fmt(tc)+" "+CUR+" شهرياً",S.commits.length?S.commits.length+" التزام — اضغط للتعديل":"لا توجد التزامات — اضغط للإضافة",function(){go("commitments");})]));
+  /* 3 savings */
+  body.appendChild(secTitle("٣. التوفير"));
+  var gm=goalsMonthlyTotal(),act=S.goals.filter(function(g){return goalMonthly(g)>0;});
+  body.appendChild(el("div",{cls:"card"},[listBtn("🎯",fmt(gm)+" "+CUR+" شهرياً للأهداف",S.goals.length?act.map(function(g){return g.name+" "+fmt(goalMonthly(g));}).join(" · ")||"لا توجد أقساط شهرية":"لا توجد أهداف — اضغط لإضافة هدف",function(){UI.goalsBack="plan";go("goals");})]));
+  var ex=amountField(on&&p.extra>0?p.extra:"");ex.inp.className="inp";ex.inp.setAttribute("placeholder","ادخار إضافي عام (اختياري)");
+  body.appendChild(ex.wrap);
+  /* 4 available */
+  var avBox=el("div",{cls:"card card-p",sty:{textAlign:"center"}});body.appendChild(avBox);
+  /* 5 allocation */
+  body.appendChild(secTitle("٤. توزيع المبلغ المتاح على الفئات"));
+  var al=on&&p.alloc?p.alloc:{},inputs={};
+  var left=el("div",{sty:{fontSize:"13px",fontWeight:"800",textAlign:"center",padding:"10px",borderRadius:"10px"}});
+  var list=el("div",{cls:"card"});
+  for(var i=0;i<cats.length;i++){
+    (function(c,last){
+      var inp=inpEl({type:"number",step:"0.5",inputmode:"decimal",value:al[c.id]>0?String(al[c.id]):"",placeholder:"0",sty:{width:"96px",textAlign:"center",padding:"8px",fontWeight:"800"}});
+      inp.addEventListener("input",upd);inputs[c.id]=inp;
+      var avg=h.by[c.id],sub=avg>0?"متوسط صرفك "+fmt(avg):"";
+      if(commitsIn(c.id)>0)sub=(sub?sub+" · ":"")+"+ التزامات "+fmt(commitsIn(c.id));
+      list.appendChild(el("div",{cls:"tx-row",sty:{borderBottom:last?"none":"1px solid var(--border)"}},[
+        el("div",{cls:"tx-icon",sty:{background:c.c+"18"}},c.em),
+        el("div",{cls:"tx-info"},[el("div",{cls:"tx-name"},c.lbl),sub?el("div",{cls:"tx-sub"},sub):null]),inp]));
+    })(cats[i],i===cats.length-1);
+  }
+  var autoB=el("button",{cls:"btn btn-ghost",onclick:function(){
+    var a=autoAlloc(avail());for(var k in inputs)if(inputs.hasOwnProperty(k))inputs[k].value=a[k]>0?String(a[k]):"";upd();
+    toast(h.n?"✓ وُزّع حسب صرفك الفعلي":"✓ وُزّع بنسب مقترحة — عدّلها كما تشاء");}},"✨ توزيع تلقائي");
+  body.appendChild(autoB);body.appendChild(left);body.appendChild(list);
+  function avail(){return (parseFloat(inc.inp.value)||0)-tc-gm-(parseFloat(ex.inp.value)||0);}
+  function allocSum(){var s=0;for(var k in inputs)if(inputs.hasOwnProperty(k))s+=parseFloat(inputs[k].value)||0;return s;}
+  function upd(){
+    var a=avail(),s=allocSum(),d=a-s,days=daysToNext();
+    avBox.innerHTML="";
+    if(!(parseFloat(inc.inp.value)>0)){avBox.appendChild(el("div",{sty:{fontSize:"13px",color:"var(--text2)"}},"أدخل دخلك الشهري لنحسب المبلغ المتاح للصرف."));}
+    else if(a<0){
+      avBox.style.background="var(--expense-bg)";
+      avBox.appendChild(el("div",{sty:{fontSize:"14px",fontWeight:"900",color:"var(--expense)"}},"⚠️ التزاماتك وأهدافك أكبر من دخلك بـ "+fmt(-a)+" "+CUR));
+      avBox.appendChild(el("div",{sty:{fontSize:"12px",color:"var(--text2)",marginTop:"6px",lineHeight:"1.7"}},"مدّد موعد أحد الأهداف، أو قلّل المبلغ المطلوب، أو خفّض الادخار الإضافي."));
+    } else {
+      avBox.style.background="";
+      avBox.appendChild(el("div",{sty:{fontSize:"11px",color:"var(--text2)",fontWeight:"700"}},"المتاح للصرف في الشهر"));
+      avBox.appendChild(el("div",{sty:{fontSize:"26px",fontWeight:"900",color:"var(--theme-accent)"}},fmt(a)+" "+CUR));
+      avBox.appendChild(el("div",{sty:{fontSize:"12px",color:"var(--text2)",marginTop:"2px"}},"≈ "+fmt(a/30)+" "+CUR+" يومياً"));
+    }
+    left.textContent=Math.abs(d)<0.0005?"✓ وُزّع المبلغ بالكامل":(d>0?"فائض غير موزّع: "+fmt(d)+" "+CUR+" — يبقى لك في نهاية الشهر، أو أضفه إلى أهدافك":"⚠️ تجاوزت المتاح بـ "+fmt(-d)+" "+CUR);
+    left.style.background=Math.abs(d)<0.0005?"var(--income-bg)":(d>0?"var(--surface2)":"var(--expense-bg)");
+    left.style.color=Math.abs(d)<0.0005?"var(--income)":(d>0?"var(--text2)":"var(--expense)");
+  }
+  inc.inp.addEventListener("input",upd);ex.inp.addEventListener("input",upd);upd();
+  function apply(){
+    var a=avail(),s=allocSum();
+    if(!(parseFloat(inc.inp.value)>0)){toast("أدخل دخلك الشهري");return;}
+    if(a<0){toast("المتاح بالسالب — عدّل أهدافك أو التزاماتك أولاً");return;}
+    if(!(s>0)){toast("وزّع المبلغ على الفئات أولاً، أو اضغط «توزيع تلقائي»");return;}
+    if(s>a+0.0005){toast("مجموع الفئات أكبر من المتاح");return;}
+    function doIt(){
+      var alloc={};
+      for(var i=0;i<cats.length;i++){var c=cats[i],v=parseFloat(inputs[c.id].value)||0;
+        if(v>0){alloc[c.id]=v;c.cap=Math.round((v+commitsIn(c.id))*1000)/1000;}else delete c.cap;}
+      S.plan={on:true,income:parseFloat(inc.inp.value),extra:parseFloat(ex.inp.value)||0,alloc:alloc,spend:s,at:Date.now(),rev:(S.plan&&S.plan.rev)||{}};
+      save();toast("✓ تم اعتماد خطة الصرف");go("home");
+    }
+    var had=cats.some(function(c){return c.cap>0;});
+    if(had&&!on) modal("استبدال حدود الإنفاق؟","لديك حدود شهرية على بعض الفئات. ستُستبدل بحدود الخطة الجديدة.",false,doIt,"اعتماد");
+    else doIt();
+  }
+  body.appendChild(el("button",{cls:"btn btn-accent",onclick:apply},on?"💾 تحديث الخطة":"✅ اعتماد الخطة"));
+  if(on) body.appendChild(el("button",{cls:"btn btn-ghost",onclick:function(){
+    modal("إيقاف خطة الصرف؟","تبقى حدود الفئات كما هي، ويمكنك تعديلها أو حذفها من الإعدادات.",false,function(){S.plan.on=false;save();toast("تم إيقاف الخطة");go("home");},"إيقاف");
+  }},"إيقاف الخطة"));
+  page.appendChild(body);return page;
+}
+/* home: plan + goals summary */
+function planHomeCard(st){
+  var p=S.plan,spent=st.freeExp,rem=p.spend-spent,days=daysToNext(),daily=rem/days,pct=p.spend>0?Math.min(100,spent/p.spend*100):0,over=rem<0;
+  var c=el("div",{cls:"card card-p",sty:{cursor:"pointer"},onclick:function(){UI.planBack="home";go("plan");}});
+  c.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",alignItems:"center"}},[
+    el("div",{sty:{fontSize:"13px",fontWeight:"900"}},"🧭 خطة الصرف"),el("div",{sty:{fontSize:"11px",color:"var(--text3)",fontWeight:"700"}},days===1?"آخر يوم قبل الراتب":"متبقٍ "+daysW(days)+" حتى الراتب")]));
+  c.appendChild(el("div",{sty:{display:"flex",alignItems:"baseline",marginTop:"8px"}},[
+    el("div",{sty:{fontSize:"12px",color:"var(--text2)",fontWeight:"700",marginLeft:"8px"}},over?"تجاوزت الخطة بـ":"يمكنك صرف اليوم"),
+    el("div",{sty:{fontSize:"24px",fontWeight:"900",color:over?"var(--expense)":"var(--income)"}},fmt(over?-rem:daily)),
+    el("div",{sty:{fontSize:"12px",color:"var(--text3)",fontWeight:"700",marginRight:"4px"}},CUR)]));
+  c.appendChild(el("div",{cls:"bar-track",sty:{marginTop:"8px"}},[el("div",{cls:"bar-fill",sty:{width:pct+"%",background:capColor(pct)}})]));
+  c.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",fontSize:"11px",color:"var(--text2)",fontWeight:"700",marginTop:"6px"}},[
+    el("span",null,"صرفت "+fmt(spent)+" من "+fmt(p.spend)),el("span",null,over?"":"متبقٍ "+fmt(rem)+" "+CUR)]));
+  return c;
+}
+function goalsHomeCard(){
+  var gs=S.goals.filter(function(g){return !goalDone(g);}).slice(0,3);if(!gs.length)gs=S.goals.slice(0,3);
+  var c=el("div",{cls:"card"});
+  c.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",padding:"12px 16px 4px"}},[
+    el("div",{sty:{fontSize:"13px",fontWeight:"900"}},"🎯 أهدافي"),
+    el("button",{sty:{fontSize:"12px",fontWeight:"800",color:"var(--theme-accent)"},onclick:function(){UI.goalsBack="home";go("goals");}},"الكل ›")]));
+  for(var i=0;i<gs.length;i++){
+    (function(g){
+      c.appendChild(el("div",{sty:{padding:"8px 16px 10px",cursor:"pointer"},onclick:function(){UI.goalId=g.id;go("goalDetail");}},[
+        el("div",{sty:{display:"flex",justifyContent:"space-between",fontSize:"12px",fontWeight:"700",marginBottom:"5px"}},[
+          el("span",null,(g.em||"🎯")+" "+g.name),el("span",{sty:{color:"var(--text2)"}},fmt(goalProg(g))+" / "+fmt(g.target))]),goalBar(g,7)]));
+    })(gs[i]);
+  }
+  return c;
+}
+function leftoverSheet(ym,amt){
+  var gs=S.goals.filter(function(g){return !goalDone(g);}),opts=gs.map(function(g){return (g.em||"🎯")+" "+g.name;});
+  askSheet({title:"🎉 تبقّى لك من خطة "+monthLbl(ym),sub:"انقل ما تبقّى إلى أحد أهدافك. يُسجَّل التحويل في آخر يوم من ذلك الشهر فلا يؤثر على ميزانية الشهر الحالي.",
+    fields:[{type:"select",options:opts,value:"0"},{type:"number",placeholder:"المبلغ",value:String(Math.floor(amt*1000)/1000)}],okLbl:"نقل",
+    onOk:function(v,close,err){
+      var a=parseFloat(v[1]);if(!a||a<=0){err("أدخل مبلغاً صحيحاً");return;}
+      var g=gs[parseInt(v[0],10)];var d=new Date(periodStartYmd(thisMonth()).replace(/-/g,"/"));d.setDate(d.getDate()-1);
+      goalDeposit(g,a,d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()));
+      S.plan.rev=S.plan.rev||{};S.plan.rev[ym]=1;save();close();toast("✓ نُقل "+fmt(a)+" إلى «"+g.name+"»");render();
+    }});
+}
+
+/* ═══════════════ HELP / GUIDE ═══════════════ */
+var HELP=[
+  {k:"start",em:"🚀",t:"البداية: الشهر المالي",b:"إذا كان راتبك يصل في يوم غير اليوم الأول من الشهر، فاجعل شهرك المالي يبدأ من يوم الراتب: «المزيد» ← «بداية الشهر المالي».\n\nعندها يُحسب كل شيء — التقارير والحدود والالتزامات والخطة — من يوم الراتب إلى اليوم السابق له في الشهر التالي.\n\nإذا كان لديك أكثر من مصدر دخل في تواريخ مختلفة، فاختر يوم أول مصدر رئيسي، وسجّل كل دخل في يومه."},
+  {k:"tx",em:"✍️",t:"تسجيل الدخل والمصروفات",b:"من الشاشة الرئيسية اضغط «إضافة دخل» أو «إضافة مصروف»، ثم اكتب المبلغ واختر الفئة.\n\n• «إدخال سريع»: يعرض آخر ما سجّلته لتكرره بضغطة.\n• «حفظ وإضافة أخرى»: لتسجيل عدة مصروفات متتالية.\n• لتعديل أي معاملة أو حذفها: اضغط عليها في أي قائمة.\n• يمكنك إضافة فئات جديدة من «المزيد» ← «فئات المصروفات» أو «فئات الدخل»."},
+  {k:"home",em:"🏠",t:"قراءة الشاشة الرئيسية",b:"• الرقم الكبير: ما تبقّى لك هذا الشهر بعد كل المصروفات.\n• الدخل: مجموع ما سجّلته من دخل.\n• ثابتة: الالتزامات المطبّقة (وتشمل التحويلات إلى الأهداف إن وُجدت).\n• متاح: الدخل بعد الالتزامات — وهو ما يمكنك الصرف منه.\n• مصاريف: ما صرفته من المتاح.\n\nالشريط أسفل الأرقام يوضّح نسبة ما أنفقته من المتاح والمبلغ المتبقي."},
+  {k:"commits",em:"📋",t:"الالتزامات الثابتة",b:"سجّل الإيجار والأقساط والفواتير الثابتة مرة واحدة من «المزيد» ← «الالتزامات الثابتة».\n\nفي بداية كل شهر يظهر لك شريط «لديك التزامات» — اضغط عليه لتطبيقها جميعاً بضغطة واحدة.\n\nنصيحة: طبّق الالتزامات في أول الشهر حتى لو لم تدفعها بعد، ليكون رقم «المتاح» دقيقاً."},
+  {k:"caps",em:"🚦",t:"حدود الإنفاق",b:"ضع حداً شهرياً لأي فئة من «المزيد» ← «فئات المصروفات وحدودها».\n\nسينبّهك التطبيق عند بلوغ 80% من الحد وعند تجاوزه، وتظهر أشرطة الحدود في الشاشة الرئيسية."},
+  {k:"goals",em:"🎯",t:"أهداف التوفير",b:"أضف هدفاً (سفر، علاج، طوارئ…) من «المزيد» ← «أهداف التوفير»، وحدّد المبلغ المطلوب.\n\n• إذا حدّدت موعداً، يحسب التطبيق القسط الشهري تلقائياً.\n• أو حدّد مبلغاً شهرياً ثابتاً، أو اترك الاثنين وأودِع متى شئت.\n\nالتحويل يدوي: في بداية كل شهر يظهر لك «حان موعد التوفير»، واضغط «تحويل» عند كل هدف. يُخصم المبلغ من ميزانية الشهر ويُضاف إلى رصيد الهدف.\n\nعند الصرف من الهدف اضغط «صرفت منه» واختر:\n• «على الهدف نفسه» (مثل حجز للسفر): يُحسب تقدّماً نحو الهدف ولا يتغير قسطك.\n• «سحب لغرض آخر»: يُعوَّض لاحقاً، فيرتفع القسط الشهري قليلاً حتى تلحق بموعدك.\n\nفي الحالتين لا يؤثر الصرف من الهدف على ميزانية الشهر، لأن المبلغ ادُّخر مسبقاً."},
+  {k:"plan",em:"🧭",t:"خطة الصرف (اختيارية)",b:"من «المزيد» ← «خطة الصرف»:\n١. أدخل دخلك الشهري (يُقترح تلقائياً من دخلك المسجّل).\n٢. تُخصم الالتزامات الثابتة وأقساط الأهداف تلقائياً.\n٣. يظهر لك المبلغ المتاح للصرف.\n٤. اضغط «توزيع تلقائي» ليوزّعه على الفئات حسب صرفك الفعلي، أو وزّعه بنفسك.\n\nبعد الاعتماد:\n• تصبح المبالغ حدوداً شهرية للفئات.\n• تظهر في الرئيسية بطاقة «يمكنك صرف اليوم» = المتبقي ÷ الأيام الباقية حتى الراتب.\n• في الشهر التالي يقترح عليك نقل ما تبقّى من الخطة إلى أحد أهدافك.\n\nإذا بقي مبلغ «غير موزّع» فهو فائض يبقى لك في نهاية الشهر."},
+  {k:"reports",em:"📊",t:"التقارير والتوقع السنوي",b:"في صفحة «التقارير» تجد: مستوى الصرف اليومي، وملخص السنة، والجدول الشهري، وتوزيع المصروفات حسب الفئة (اضغط أي فئة لتفاصيلها).\n\nبطاقة «التوقع السنوي» تحسب كم ستوفّر في سنة إذا استمررت على المعدل نفسه، اعتماداً على متوسط آخر 3 أشهر مكتملة.\n\nشريط «ماذا لو؟» يريك أثر تخفيض مصروفاتك المتغيرة على توفيرك السنوي."},
+  {k:"debts",em:"🤝",t:"الديون",b:"من «المزيد» ← «الديون» سجّل:\n• «لي عند الناس»: مبالغ أقرضتها.\n• «علي للناس»: مبالغ اقترضتها.\n\nيمكنك تسجيل السداد على دفعات، وتحديد تاريخ استحقاق ينبّهك عند التأخر، وربط الدين بالميزانية اختيارياً."},
+  {k:"search",em:"🔍",t:"البحث في المعاملات",b:"من صفحة «الدخل» أو «المصروفات» استخدم مربع البحث للبحث بالوصف أو الفئة أو المبلغ."},
+  {k:"security",em:"🔒",t:"الخصوصية وقفل الرمز",b:"بياناتك المالية مشفّرة ومحفوظة داخل جهازك فقط، ولا تُرسل إلى أي خادم.\n\nيمكنك تفعيل قفل برمز من 6 أرقام من «المزيد» ← «قفل الرمز». يُقفل التطبيق تلقائياً بعد دقيقة في الخلفية. احفظ إجابة سؤال الأمان، فهي طريقتك الوحيدة لاسترجاع الدخول إذا نسيت الرمز."},
+  {k:"backup",em:"💾",t:"النسخ الاحتياطي ونقل الجهاز",b:"لأن البيانات محفوظة في هذا الجهاز فقط، خذ نسخة احتياطية بانتظام: «المزيد» ← «نسخة احتياطية مشفّرة»، واختر كلمة سر للملف.\n\nعند تغيير الجهاز: افتح التطبيق في الجهاز الجديد ← «استرجاع نسخة احتياطية» ← اختر الملف وأدخل كلمة سره.\n\nتنبيه: مسح بيانات المتصفح يحذف بيانات التطبيق، فلا تنسَ النسخة الاحتياطية."},
+  {k:"look",em:"🎨",t:"المظهر والعملة",b:"من «المزيد» اختر الوضع الفاتح أو الداكن أو التلقائي، ولون التطبيق المفضل، والعملة (تغيير العملة يغيّر طريقة العرض فقط ولا يحوّل المبالغ)."}
+];
+function helpLink(k,lbl){
+  return el("button",{sty:{display:"block",margin:"8px auto 0",fontSize:"12px",fontWeight:"800",color:"rgba(255,255,255,.9)",textDecoration:"underline"},
+    onclick:function(){UI.helpOpen=k;UI.helpBack=UI.view;go("help");}},"❓ "+(lbl||"كيف تعمل؟"));
+}
+function pageHelp(){
+  var page=el("div",{sty:{minHeight:"100vh",paddingBottom:"40px"}}),hdr=hdrBar("دليل الاستخدام",UI.helpBack||"more");
+  hdr.appendChild(el("div",{sty:{fontSize:"13px",color:"rgba(255,255,255,.8)",marginTop:"8px"}},"اضغط على أي موضوع لعرض شرحه."));
+  page.appendChild(hdr);
+  var body=el("div",{cls:"content"}),card=el("div",{cls:"card"}),openEl=null;
+  for(var i=0;i<HELP.length;i++){
+    (function(h,last){
+      var open=UI.helpOpen===h.k;
+      var txt=el("div",{sty:{display:open?"block":"none",padding:"0 18px 16px",fontSize:"13px",lineHeight:"1.85",color:"var(--text2)",whiteSpace:"pre-line"}},h.b);
+      var arr=el("span",{cls:"list-arrow",sty:{transform:open?"rotate(-90deg)":"",transition:"transform .2s"}},"›");
+      var wrap=el("div",{sty:{borderBottom:last?"none":"1px solid var(--border)"}},[
+        el("button",{cls:"list-btn",onclick:function(){var o=txt.style.display!=="none";txt.style.display=o?"none":"block";arr.style.transform=o?"":"rotate(-90deg)";UI.helpOpen=o?null:h.k;}},
+          [el("div",{cls:"list-ico"},h.em),el("div",{cls:"list-txt"},[el("div",{cls:"list-t"},h.t)]),arr]),txt]);
+      if(open)openEl=wrap;
+      card.appendChild(wrap);
+    })(HELP[i],i===HELP.length-1);
+  }
+  body.appendChild(card);
+  body.appendChild(el("div",{sty:{fontSize:"12px",color:"var(--text3)",textAlign:"center",lineHeight:"1.7"}},"لديك سؤال آخر؟ تواصل معنا عبر إنستغرام @Suhub.apps"));
+  page.appendChild(body);
+  if(openEl)setTimeout(function(){try{openEl.scrollIntoView();window.scrollBy(0,-12);}catch(e){}},30);
+  return page;
 }
 
 /* ═══════════════ PAGE: COMMITMENTS ═══════════════ */
@@ -1467,12 +1900,12 @@ function forecastData(){
   var inc=0,free=0,com=0,byEC={};
   for(var j=0;j<basis.length;j++){
     var st=monthStats(basis[j]);inc+=st.inc;free+=st.freeExp;com+=st.commitExp;
-    for(var t=0;t<st.txs.length;t++){var x=st.txs[t];if(x.type==="expense"&&!x.isCommit)byEC[x.catId]=(byEC[x.catId]||0)+x.amount;}
+    for(var t=0;t<st.txs.length;t++){var x=st.txs[t];if(x.type==="expense"&&!x.isCommit&&!x.isSaving&&!x.fromGoal)byEC[x.catId]=(byEC[x.catId]||0)+x.amount;}
   }
   var n=basis.length;inc/=n;free/=n;com/=n;
   var top=null,tv=0;for(var c in byEC){if(byEC.hasOwnProperty(c)&&byEC[c]>tv){tv=byEC[c];top=c;}}
   var yr=cur.slice(0,4),cm=parseInt(cur.slice(5,7),10),ytd=0,ytdN=0;
-  for(var q=0;q<done.length;q++){if(done[q].indexOf(yr)===0){ytd+=monthStats(done[q]).bal;ytdN++;}}
+  for(var q=0;q<done.length;q++){if(done[q].indexOf(yr)===0){var sq=monthStats(done[q]);ytd+=sq.bal+sq.saveExp;ytdN++;}}
   return {n:n,fromCurrent:!done.length,inc:inc,free:free,com:com,net:inc-free-com,
     top:top?getCat("expense",top):null,topV:tv/n,ytd:ytd,ytdN:ytdN,left:13-cm,year:yr};
 }
@@ -1678,12 +2111,17 @@ function pageMore(){
   var st=el("div",{cls:"card"});
   st.appendChild(listBtn("💱","العملة",S.currency.code+" · "+S.currency.lbl,pickCurrency));
   st.appendChild(listBtn("📅","بداية الشهر المالي",cycDay()===1?"يوم 1 (الشهر الميلادي)":"يوم "+cycDay()+" من كل شهر (يوم الراتب)",pickCycleDay));
+  st.appendChild(listBtn("🎯","أهداف التوفير",S.goals.length?(goalsW(S.goals.length)+" · "+fmt(goalsMonthlyTotal())+" "+CUR+" شهرياً"):"سفر، علاج، طوارئ…",function(){UI.goalsBack="more";go("goals");}));
+  st.appendChild(listBtn("🧭","خطة الصرف",S.plan&&S.plan.on?("مفعّلة · "+fmt(S.plan.spend)+" "+CUR+" للصرف شهرياً"):"اختياري — وزّع دخلك واعرف مصروفك اليومي",function(){UI.planBack="more";go("plan");}));
   var dtt=debtTotals();
   st.appendChild(listBtn("🤝","الديون",dtt.open?("لك "+fmt(dtt.inn)+" · عليك "+fmt(dtt.out)):"لي عند الناس وعلي للناس",function(){go("debts");}));
   st.appendChild(listBtn("📋","الالتزامات الثابتة",S.commits.length+" التزام · "+fmt(totalCommits())+" "+CUR+"/شهر",function(){go("commitments");}));
   st.appendChild(listBtn("🏷️","فئات المصروفات وحدودها",EXP_CATS.length+" فئة · "+EXP_CATS.filter(function(c){return c.cap>0;}).length+" بحد شهري",function(){UI.editCatType="expense";go("catList");}));
   st.appendChild(listBtn("🏷️","فئات الدخل",INC_CATS.length+" فئة",function(){UI.editCatType="income";go("catList");}));
   body.appendChild(st);
+
+  body.appendChild(secTitle("المساعدة"));
+  body.appendChild(el("div",{cls:"card"},[listBtn("📖","دليل الاستخدام","شرح كل الخصائص خطوة بخطوة",function(){UI.helpOpen=null;UI.helpBack="more";go("help");})]));
 
   /* Data */
   body.appendChild(secTitle("البيانات"));
@@ -1791,7 +2229,7 @@ function exportBackup(){
     onOk:function(v,close,err){
       if(v[0].length<6){err("6 أحرف على الأقل");return;}
       if(v[0]!==v[1]){err("كلمتا السر غير متطابقتين");return;}
-      var payload={txs:S.txs,commits:S.commits,debts:S.debts,expCats:EXP_CATS,incCats:INC_CATS};
+      var payload={txs:S.txs,commits:S.commits,debts:S.debts,goals:S.goals,plan:S.plan,expCats:EXP_CATS,incCats:INC_CATS};
       wrapWith(v[0],enc.encode(JSON.stringify(payload))).then(function(w){
         downloadText("ميزانية-البيت-"+today()+".json",JSON.stringify({_t:"mb3",v:3,d:today(),salt:w.salt,iv:w.iv,ct:w.ct}));
         S.lastBackup=Date.now();save();close();toast("✓ تم حفظ النسخة");render();
@@ -1800,7 +2238,7 @@ function exportBackup(){
 }
 function applyBackup(p){
   modal("استبدال البيانات الحالية؟","سيتم استبدال كل المعاملات والالتزامات والفئات بمحتوى النسخة.",true,function(){
-    S.txs=p.txs||[];S.commits=p.commits||[];S.debts=p.debts||[];
+    S.txs=p.txs||[];S.commits=p.commits||[];S.debts=p.debts||[];S.goals=p.goals||[];S.plan=p.plan||null;
     if(p.expCats&&p.expCats.length)EXP_CATS=p.expCats;
     if(p.incCats&&p.incCats.length)INC_CATS=p.incCats;
     S.lastBackup=Date.now();save();toast("✓ تم الاسترجاع");go("home");
@@ -1920,7 +2358,8 @@ function render(){
     report:pageReport,more:pageMore,confirmXL:pageConfirmXL,
     catList:pageCatList,editCat:pageEditCat,
     commitments:pageCommits,editCommit:pageAECommit,catDetail:pageCatDetail,
-    debts:pageDebts,editDebt:pageEditDebt,debtDetail:pageDebtDetail
+    debts:pageDebts,editDebt:pageEditDebt,debtDetail:pageDebtDetail,
+    goals:pageGoals,editGoal:pageEditGoal,goalDetail:pageGoalDetail,plan:pagePlan,help:pageHelp
   };
   mount((pages[UI.view]||pageHome)());
 }
