@@ -8,7 +8,7 @@
 (function(){
 "use strict";
 
-var APP_VERSION = "25.4";
+var APP_VERSION = "25.7";
 var CURRENCIES = [
   {code:"BHD", lbl:"د.ب", dec:3},{code:"KWD", lbl:"د.ك", dec:3},{code:"OMR", lbl:"ر.ع", dec:3},
   {code:"SAR", lbl:"ر.س", dec:2},{code:"AED", lbl:"د.إ", dec:2},{code:"QAR", lbl:"ر.ق", dec:2},
@@ -1458,6 +1458,76 @@ function reportChart(ym){
   return wrap;
 }
 
+/* ═══════════════ ANNUAL FORECAST ═══════════════ */
+function forecastData(){
+  var cur=thisMonth(),all=dataMonths(),done=[];
+  for(var i=0;i<all.length;i++){var m=all[i];if(m<cur&&monthStats(m).txs.length)done.push(m);}
+  done.sort().reverse();
+  var basis=done.length?done.slice(0,3):[cur];
+  var inc=0,free=0,com=0,byEC={};
+  for(var j=0;j<basis.length;j++){
+    var st=monthStats(basis[j]);inc+=st.inc;free+=st.freeExp;com+=st.commitExp;
+    for(var t=0;t<st.txs.length;t++){var x=st.txs[t];if(x.type==="expense"&&!x.isCommit)byEC[x.catId]=(byEC[x.catId]||0)+x.amount;}
+  }
+  var n=basis.length;inc/=n;free/=n;com/=n;
+  var top=null,tv=0;for(var c in byEC){if(byEC.hasOwnProperty(c)&&byEC[c]>tv){tv=byEC[c];top=c;}}
+  var yr=cur.slice(0,4),cm=parseInt(cur.slice(5,7),10),ytd=0,ytdN=0;
+  for(var q=0;q<done.length;q++){if(done[q].indexOf(yr)===0){ytd+=monthStats(done[q]).bal;ytdN++;}}
+  return {n:n,fromCurrent:!done.length,inc:inc,free:free,com:com,net:inc-free-com,
+    top:top?getCat("expense",top):null,topV:tv/n,ytd:ytd,ytdN:ytdN,left:13-cm,year:yr};
+}
+function sfmt(v){return (v<0?"\u200E−":"")+fmt(Math.abs(v));}
+function forecastCard(){
+  var d=forecastData(),card=el("div",{cls:"card card-p"});
+  card.appendChild(el("div",{sty:{display:"flex",alignItems:"center",marginBottom:"12px"}},[
+    el("span",{sty:{fontSize:"18px",marginLeft:"8px"}},"🔮"),
+    el("span",{sty:{fontSize:"15px",fontWeight:"900"}},"التوقع السنوي")]));
+  if(!(d.inc>0)){
+    card.appendChild(el("div",{sty:{fontSize:"13px",color:"var(--text2)",lineHeight:"1.7"}},"سجّل دخلك أولاً لنحسب لك كم ستوفّر في السنة."));
+    return card;
+  }
+  var basisLbl=d.fromCurrent?"صافي الشهر الحالي":(d.n===1?"صافي الشهر السابق":"متوسط صافي آخر "+(d.n===2?"شهرين":d.n+" أشهر"));
+  var g=el("div",{cls:"grid2"});
+  function box(lbl,val,col,bg){
+    var v=el("div",{cls:"stat-val",sty:{color:col,fontSize:"16px"}});
+    var b=el("div",{cls:"stat-card",sty:{boxShadow:"none",background:bg}},[el("div",{cls:"stat-lbl"},lbl),v,el("div",{cls:"stat-cur"},CUR)]);
+    g.appendChild(b);return v;
+  }
+  var vM=box(basisLbl,"","var(--text)","var(--surface2)");
+  var vY=box("","","","");
+  var yLbl=vY.previousSibling,yBox=vY.parentNode;
+  card.appendChild(g);
+  var line=el("div",{sty:{fontSize:"12px",color:"var(--text2)",lineHeight:"1.8",marginTop:"12px"}});
+  card.appendChild(line);
+  var hint=el("div",{sty:{fontSize:"12px",lineHeight:"1.7",marginTop:"6px",fontWeight:"700"}});
+  card.appendChild(hint);
+  /* what-if slider: cut variable (non-fixed) spending */
+  var wrap=el("div",{sty:{borderTop:"1px solid var(--border)",marginTop:"14px",paddingTop:"12px"}});
+  var pv=el("span",{sty:{fontWeight:"900"}},"0%");
+  wrap.appendChild(el("div",{sty:{display:"flex",justifyContent:"space-between",fontSize:"13px",fontWeight:"700"}},[el("span",null,"ماذا لو خفّضت مصروفاتي المتغيرة؟"),pv]));
+  var rg=el("input",{type:"range",min:"0",max:"30",step:"5",value:"0",sty:{width:"100%",marginTop:"8px",direction:"ltr",accentColor:"var(--theme-accent)"}});
+  wrap.appendChild(rg);
+  var gain=el("div",{sty:{fontSize:"12px",color:"var(--text2)",marginTop:"4px"}},"حرّك المؤشر لترى أثر التوفير");
+  wrap.appendChild(gain);
+  if(d.free>0)card.appendChild(wrap);
+  function upd(){
+    var p=parseInt(rg.value,10)||0,net=d.inc-d.free*(1-p/100)-d.com,yr=net*12,pos=net>=0;
+    vM.textContent=sfmt(net);vM.style.color=net<0?"var(--expense)":"var(--text)";
+    yLbl.textContent=pos?"توفيرك في سنة":"العجز في سنة";
+    vY.textContent=fmt(Math.abs(yr));vY.style.color=pos?"var(--income)":"var(--expense)";
+    yBox.style.background=pos?"var(--income-bg)":"var(--expense-bg)";
+    var end=d.ytd+net*d.left;
+    line.textContent=(d.ytdN?"المتحقق في الأشهر المكتملة من "+d.year+": "+sfmt(d.ytd)+" "+CUR+" — ":"")+"المتوقع حتى نهاية "+d.year+": "+sfmt(end)+" "+CUR;
+    if(pos){hint.style.color="var(--income)";hint.textContent="✓ إذا استمررت بهذا المعدل ستوفّر "+fmt(yr)+" "+CUR+" سنوياً";}
+    else{hint.style.color="var(--expense)";hint.textContent="⚠️ مصروفاتك أعلى من دخلك"+(d.top?"، وأكبر بند متغيّر هو «"+d.top.lbl+"» بمتوسط "+fmt(d.topV)+" "+CUR+" شهرياً":"");}
+    pv.textContent=p+"%";
+    gain.textContent=p?("يزيد توفيرك السنوي "+fmt(d.free*p/100*12)+" "+CUR):"حرّك المؤشر لترى أثر التوفير";
+  }
+  rg.addEventListener("input",upd);rg.addEventListener("change",upd);
+  upd();
+  card.appendChild(el("div",{sty:{fontSize:"10px",color:"var(--text3)",marginTop:"10px"}},"التوقع تقديري ويعتمد على "+(d.fromCurrent?"الشهر الحالي فقط، ويصبح أدق بعد اكتمال الشهر.":"الأشهر المكتملة فقط.")));
+  return card;
+}
 function pageReport(){
   UI.tab="report";
   var ym=UI.month,st=monthStats(ym),year=ym.slice(0,4),allM=dataMonths(),yearMs=[],yInc=0,yExp=0;
@@ -1477,6 +1547,7 @@ function pageReport(){
   var ar=el("div",{cls:"stats-row"}),sts=[{l:"الدخل",v:yInc,c:"var(--income)"},{l:"المصروفات",v:yExp,c:"var(--expense)"},{l:"الرصيد",v:yInc-yExp,c:(yInc-yExp)>=0?"var(--income)":"var(--expense)"}];
   for(var k=0;k<sts.length;k++) ar.appendChild(el("div",{cls:"stat-card"},[el("div",{cls:"stat-lbl"},sts[k].l),el("div",{cls:"stat-val",sty:{color:sts[k].c,fontSize:"15px"}},fmt(Math.abs(sts[k].v))),el("div",{cls:"stat-cur"},CUR)]));
   body.appendChild(ar);
+  body.appendChild(forecastCard());
 
   body.appendChild(secTitle("الجدول الشهري"));
   var tbl=el("table"),hr=el("tr"),ths=["الشهر","دخل","مصروفات","رصيد"];
